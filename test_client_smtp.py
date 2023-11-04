@@ -11,8 +11,8 @@ def main():
         if response[:3] != '220':
             print("Error connecting to the server")
             return
-        else:
-            print("Server: " + response)
+
+        print("Server: " + response)
             
         msg = "EHLO [127.0.0.1]\r\n"
         clientSocket.sendall(msg.encode('utf-8'))
