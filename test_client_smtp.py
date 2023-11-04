@@ -21,7 +21,7 @@ def main():
         print(response)
         
         msg = "QUIT\r\n"
-        clientSocket.send(msg.encode('utf-8'))
+        clientSocket.sendall(msg.encode('utf-8'))
             
             
 if __name__ == '__main__':
