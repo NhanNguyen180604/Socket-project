@@ -96,10 +96,6 @@ def SendMail():
         for cc in email.Cc:
             msg = 'Cc: ' + cc + '\r\n'
             client.sendall(msg.encode('utf-8'))
-        
-        for bcc in email.Bcc:
-            msg = 'Bcc: ' + bcc + '\r\n'
-            client.sendall(msg.encode('utf-8'))
             
         msg = 'From: ' + user + '\r\n'
         client.sendall(msg.encode('utf-8'))
@@ -111,7 +107,7 @@ def SendMail():
         client.sendall(msg.encode('utf-8'))
         
         for line in email.Content:
-            line += '\n'
+            line += '\r\n'
             client.sendall(line.encode('utf-8'))
         
         msg = '\r\n.\r\n'  #the end of mail content
