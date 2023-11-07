@@ -108,7 +108,6 @@ def SendMail():
             
         msg = '\r\n'
         client.sendall(msg.encode('utf-8'))
-
         
         msg = '\r\n.\r\n'  #the end of mail content
         client.sendall(msg.encode('utf-8'))
