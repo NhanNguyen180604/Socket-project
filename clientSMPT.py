@@ -3,9 +3,6 @@ import time
 from Email import Email
 import re
 import os
-import pathlib
-import base64
-from mimetypes import guess_type
 
 def SendMail():
     HOST = '127.0.0.1'
