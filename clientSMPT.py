@@ -13,7 +13,7 @@ def SendMail():
     user = 'ntnhan@gmail.com'
     
     #input Email content
-    print("Enter email's detail, press enter to skip")
+    print("Enter email's detail, press enter to skip a field")
     user_email = email.message.EmailMessage(email.policy.SMTPUTF8)
     
     temp = input('To: ')
@@ -49,6 +49,10 @@ def SendMail():
         while True:
             input_path = input('Enter path: ')
             if (os.path.exists(input_path) and os.path.isfile(input_path)):
+                if (os.path.getsize(input_path) > 3e+6):
+                    print('Your file\'s size should not exceed 3MB')
+                    continue
+                
                 mime_type, encoding = mimetypes.guess_type(input_path, strict=True)
                 file_name = os.path.basename(input_path)
                 
@@ -58,6 +62,8 @@ def SendMail():
                                                     subtype=mime_type.split('/')[1],
                                                     filename=file_name)
                     
+                if (input('Do you want to attach another file (Y/N): ') == 'Y'):
+                    continue
                 break
             
             else:
