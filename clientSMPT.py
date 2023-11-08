@@ -109,14 +109,9 @@ def SendMail():
         client.sendall(msg.encode('utf-8'))
         
         #send data
-        data = user_email.as_string(policy=email.policy.SMTPUTF8)
-        client.sendall(data.encode('utf-8'))
-            
-        msg = '\r\n'
-        client.sendall(msg.encode('utf-8'))
+        data = user_email.as_bytes(policy=email.policy.SMTPUTF8)
+        client.sendall(data)
         
-        msg = '\r\n.\r\n'  #the end of mail content
-        client.sendall(msg.encode('utf-8'))
-        
-        msg = 'QUIT\r\n'
-        client.sendall(msg.encode('utf-8'))
+        #end of mail
+        client.sendall(b'\r\n\r\n.\r\nQUIT\r\n')
+        client.recv(1024)
