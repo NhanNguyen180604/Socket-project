@@ -1,10 +1,9 @@
 class Email:
-    Subject : str
+    Subject = ''
     To = []
     Cc = []
     Bcc = []
-    Content = []
-    path : str
+    Content =''
+    Path = ''
     def __init__(self):
-        Subject = ''
-        path = ''
+        pass

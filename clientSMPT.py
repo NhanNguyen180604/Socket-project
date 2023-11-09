@@ -1,68 +1,47 @@
 import socket
 import time
-import email.message
-import email.policy
+import Email
 import re
 import os
 import mimetypes
+import base64
 
 def SendMail():
     HOST = '127.0.0.1'
     PORT = 9696
     
     user = 'ntnhan@gmail.com'
+    name_of_user = "Nguyễn Thành Nhân"
+    name_of_user = name_of_user.encode('utf-8')
+    name_of_user = base64.b64encode(name_of_user).decode('utf-8')
+    name_of_user = f'=?UTF-8?B?{name_of_user}?='
+
+    email = Email.Email()
     
     #input Email content
     print("Enter email's detail, press enter to skip")
-    user_email = email.message.EmailMessage(email.policy.SMTPUTF8)
-    
     temp = input('To: ')
     if (temp != ''):
-        user_email.add_header('To', temp)
-        
+        email.To = list(set(re.split(', |,| ', temp)))
+    
     temp = input('Cc: ')
     if (temp != ''):
-        user_email.add_header('Cc', temp)
+        email.Cc = list(set(re.split(', |,| ', temp)))
         
     temp = input('Bcc: ')
     if (temp != ''):
-        user_email.add_header('Bcc', temp)
+        email.Bcc = list(set(re.split(', |,| ', temp)))
         
-    user_email.add_header('Subject', input('Subject: '))
+    email.Subject = input('Subject: ')
     
-    print("Content:")
-    content = []
+    print('Body:')
     while True:
         line = input()
         if (line == ''):
             break
-        content.append(line)
-    
-    body = ''
-    for line in content:
-        body += line + '\r\n'
-    
-    user_email.set_content(body)
-    
-    #input file path            
-    if (input('Do you want to attach file (Y/N): ') == 'Y'):
-        while True:
-            input_path = input('Enter path: ')
-            if (os.path.exists(input_path) and os.path.isfile(input_path)):
-                mime_type, encoding = mimetypes.guess_type(input_path, strict=True)
-                file_name = os.path.basename(input_path)
-                
-                with open(input_path, 'rb') as fi:
-                    data = fi.read()
-                    user_email.add_attachment(data, maintype=mime_type.split('/')[0],
-                                                    subtype=mime_type.split('/')[1],
-                                                    filename=file_name)
-                    
-                break
-            
-            else:
-                print('You entered an invalid path!')
-    
+        email.Content += line
+        email.Content += '\r\n'
+        
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
         #initialize TCP connection
         client.connect((HOST, PORT))
@@ -79,19 +58,11 @@ def SendMail():
         msg = f'MAIL FROM:<{user}>\r\n'
         client.sendall(msg.encode('utf-8'))
         
-        recipentList = []
-        if (user_email['To'] != None):
-            recipentList += list(set(re.split(', |,| ', str(user_email['To']))))
-        if (user_email['Cc'] != None):
-            recipentList += list(set(re.split(', |,| ', str(user_email['Cc']))))
-        if (user_email['Bcc'] != None):
-            recipentList += list(set(re.split(', |,| ', str(user_email['Bcc']))))
-        
-        for rcpt in recipentList:
+        for rcpt in list(set(email.To + email.Cc + email.Bcc)):
             msg = f'RCPT TO:<{rcpt}>\r\n'
             client.sendall(msg.encode('utf-8'))
-        
-        del user_email['Bcc']    
+            if (client.recv(1024).decode('utf-8')[0:3] != '250'):
+                raise RuntimeError('250 reply not received from server when sending RCPT')
         
         #send mail content
         msg = 'DATA\r\n'
@@ -103,15 +74,31 @@ def SendMail():
         client.sendall(msg.encode('utf-8'))
         
         #send data
-        data = user_email.as_string(policy=email.policy.SMTPUTF8)
-        client.sendall(data.encode('utf-8'))
-            
-        msg = '\r\n'
+        msg = f'From: {name_of_user} <{user}>\r\n'
         client.sendall(msg.encode('utf-8'))
+        
+        if (len(email.To) > 0):
+            msg = 'To: '
+            for i in email.To:
+                msg += i + ', '
 
+            msg = msg[:-2] + '\r\n'
+            client.sendall(msg.encode('utf-8'))
         
-        msg = '\r\n.\r\n'  #the end of mail content
+        if (len(email.Cc)):
+            msg = 'Cc: '
+            for i in email.Cc:
+                msg += i + ', '
+                
+            msg = msg[:-2] + '\r\n'
+            client.sendall(msg.encode('utf-8'))
+            
+        msg = f'Subject: {email.Subject}\r\n\r\n'
         client.sendall(msg.encode('utf-8'))
         
-        msg = 'QUIT\r\n'
+        client.sendall(email.Content.encode('utf-8'))
+        
+        msg = '\r\n.\r\nQUIT\r\n'  #the end of mail content
         client.sendall(msg.encode('utf-8'))
+        
+        client.recv(1024)
