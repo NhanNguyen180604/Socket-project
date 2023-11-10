@@ -5,16 +5,20 @@ import email.policy
 import re
 import os
 import mimetypes
+import base64
 
 def SendMail():
     HOST = '127.0.0.1'
     PORT = 9696
     
     user = 'ntnhan@gmail.com'
+    name_of_user = "Nguyen Thanh Nhan"
     
     #input Email content
     print("Enter email's detail, press enter to skip a field")
     user_email = email.message.EmailMessage(email.policy.SMTPUTF8)
+    
+    user_email.add_header('From', f'{name_of_user} <{user}>')
     
     temp = input('To: ')
     if (temp != ''):
