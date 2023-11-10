@@ -117,5 +117,5 @@ def SendMail():
         client.sendall(data)
         
         #end of mail
-        client.sendall(b'\r\n\r\n.\r\nQUIT\r\n')
+        client.sendall(b'\r\n.\r\nQUIT\r\n')
         client.recv(1024)

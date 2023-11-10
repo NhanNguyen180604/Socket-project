@@ -17,8 +17,6 @@ def main():
                 return
             case _:
                 print('Invalid choice!\n')
-        
-        
 
 if __name__ == '__main__':
     main()
