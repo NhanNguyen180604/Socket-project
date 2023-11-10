@@ -20,28 +20,52 @@ def SendMail():
     
     #input Email content
     print("Enter email's detail, press enter to skip")
-    temp = input('To: ')
-    if (temp != ''):
-        email.To = list(set(re.split(', |,| ', temp)))
+    email.To = input('To: ')
     
-    temp = input('Cc: ')
-    if (temp != ''):
-        email.Cc = list(set(re.split(', |,| ', temp)))
+    email.Cc = input('Cc: ')
         
-    temp = input('Bcc: ')
-    if (temp != ''):
-        email.Bcc = list(set(re.split(', |,| ', temp)))
+    email.Bcc = input('Bcc: ')
         
     email.Subject = input('Subject: ')
     
     print('Body:')
+    email.MIME_Parts.append(Email.MyMIME())
+    email.MIME_Parts[0].TextBody()
+    
     while True:
         line = input()
         if (line == ''):
             break
-        email.Content += line
-        email.Content += '\r\n'
+        email.MIME_Parts[0].Content += line
+        email.MIME_Parts[0].Content += '\r\n'
         
+    if (input('Do you want to send attachment (Y/N): ') == 'Y'):
+        while True:
+            input_path = input('Enter path: ')
+            if (os.path.exists(input_path) and os.path.isfile(input_path)):
+                if (os.path.getsize(input_path) > 3e+6):
+                    print('Your file\'s size should not exceed 3MB')
+                    continue
+                
+                mime_type = mimetypes.guess_type(input_path, strict=True)
+                file_name = os.path.basename(input_path)
+                
+                with open(input_path, 'rb') as fi:
+                    data = fi.read()
+                    data = base64.b64encode(data)
+                    attachment = Email.MyMIME()
+                    attachment.CreateHeader(mime_type[0], file_name)
+                    attachment.Content = str(data)[2:-1]
+                    attachment.Content += '\r\n'
+                    email.MIME_Parts.append(attachment)
+                    
+                if (input('Do you want to attach another file (Y/N): ') != 'Y'):
+                    break
+            
+            else:
+                print('You entered an invalid path!')
+            
+    # print(email.As_String(sender_mail=user, sender_name=name_of_user))
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
         #initialize TCP connection
         client.connect((HOST, PORT))
@@ -58,47 +82,25 @@ def SendMail():
         msg = f'MAIL FROM:<{user}>\r\n'
         client.sendall(msg.encode('utf-8'))
         
-        for rcpt in list(set(email.To + email.Cc + email.Bcc)):
+        recipentList = []
+        if (email.To != ''):
+            recipentList += re.split(', |,| ', email.To)
+        if (email.Cc != ''):
+            recipentList += re.split(', |,| ', email.Cc)
+        if (email.Bcc != ''):
+            recipentList += re.split(', |,| ', email.Bcc)
+            
+        for rcpt in list(set(recipentList)):
             msg = f'RCPT TO:<{rcpt}>\r\n'
             client.sendall(msg.encode('utf-8'))
-            if (client.recv(1024).decode('utf-8')[0:3] != '250'):
+            if (client.recv(1024).decode('utf-8')[:3] != '250'):
                 raise RuntimeError('250 reply not received from server when sending RCPT')
         
         #send mail content
         msg = 'DATA\r\n'
         client.sendall(msg.encode('utf-8'))
         
-        current_time = time.time()
-        current_date = time.ctime(current_time)
-        msg = 'Date: ' + current_date + '\r\n'
-        client.sendall(msg.encode('utf-8'))
-        
-        #send data
-        msg = f'From: {name_of_user} <{user}>\r\n'
-        client.sendall(msg.encode('utf-8'))
-        
-        if (len(email.To) > 0):
-            msg = 'To: '
-            for i in email.To:
-                msg += i + ', '
-
-            msg = msg[:-2] + '\r\n'
-            client.sendall(msg.encode('utf-8'))
-        
-        if (len(email.Cc)):
-            msg = 'Cc: '
-            for i in email.Cc:
-                msg += i + ', '
-                
-            msg = msg[:-2] + '\r\n'
-            client.sendall(msg.encode('utf-8'))
-            
-        msg = f'Subject: {email.Subject}\r\n\r\n'
-        client.sendall(msg.encode('utf-8'))
-        
-        client.sendall(email.Content.encode('utf-8'))
-        
-        msg = '\r\n.\r\nQUIT\r\n'  #the end of mail content
-        client.sendall(msg.encode('utf-8'))
+        data = email.As_String(sender_mail=user, sender_name=name_of_user).encode('utf-8')
+        client.sendall(data)
         
         client.recv(1024)
