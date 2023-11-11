@@ -2,13 +2,23 @@ import socket
 import Email
 import re
 import base64
+import json
 
 def SendMail():
-    HOST = '127.0.0.1'
-    PORT = 9696
+    config_file = 'config.json'
+    config : dict
+    HOST : str
+    PORT : int
+    usermail : str
+    username : str
+
+    with open(config_file, 'r') as fi:
+        config = json.load(fi)
+        HOST = config['General']['MailServer']
+        PORT = config['General']['SMTP']
+        usermail = config['General']['usermail']
+        username = config['General']['username']
     
-    usermail = 'ntnhan@gmail.com'
-    username = "Nguyễn Thành Nhân"
     username = username.encode('utf-8')
     username = base64.b64encode(username).decode('utf-8')
     username = f'=?UTF-8?B?{username}?='
