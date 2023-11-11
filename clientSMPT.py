@@ -54,6 +54,8 @@ def SendMail():
         msg = 'DATA\r\n'
         client.sendall(msg.encode('utf-8'))
         
+        print('================Sending================')
         client.sendall(email.As_String(sender_mail=usermail, sender_name=username).encode('utf-8'))
+        print('===========Finished sending============')
         
         client.recv(1024)

@@ -7,6 +7,7 @@ import base64
 import re
 
 LINE_LENGTH = 76
+MIME_VERSION = 'MIME-Version: 1.0'
 
 class MyMIME:
     Headers = ''
@@ -14,23 +15,23 @@ class MyMIME:
     
     def TextBody(self):
         Content_type = f'Content-Type: text/plain'
-        charset = 'charset = "utf-8"'
+        charset = 'charset="utf-8"'
         Content_transfer_encoding = 'Content-Transfer-Encoding: 8bit'
         self.Headers = f'{Content_type}; {charset}\r\n{Content_transfer_encoding}\r\n'
         
-    def CreateHeader(self, mime_type : str, file_name : str):
+    def CreateAttachmentHeader(self, mime_type : str, file_name : str):
         Content_type = f'Content-Type: {mime_type}; name="{file_name}"'
         Content_transfer_encoding = 'Content-Transfer-Encoding: base64'
         Content_disposition = 'Content-Disposition: attachment'
-        self.Headers = f'{Content_type}\r\n{Content_transfer_encoding}\r\n{Content_disposition}; filename="{file_name}"\r\n'
+        self.Headers = f'{Content_type}\r\n{Content_transfer_encoding}\r\n{Content_disposition}; filename="{file_name}"\r\n{MIME_VERSION}\r\n'
     
     
 class Email:
-    MIME_Version = 'MIME-Version: 1.0'
     Subject = ''
     To = ''
     Cc = ''
     Bcc = ''
+    Boundary = ''
     MIME_Parts = []
     
     def Input(self): 
@@ -66,7 +67,7 @@ class Email:
                         data = fi.read()
                         data = base64.b64encode(data)
                         attachment = MyMIME()
-                        attachment.CreateHeader(mime_type[0], file_name)
+                        attachment.CreateAttachmentHeader(mime_type[0], file_name)
                         attachment.Content = str(data)[2:-1]
                         attachment.Content += '\r\n'
                         self.MIME_Parts.append(attachment)
@@ -80,16 +81,10 @@ class Email:
     def As_String(self, sender_mail: str, sender_name: str) -> str:
         result = ''
         
-        if (len(self.MIME_Parts) > 1):
-            self.Boundary = GenerateBoundary()
-            result += (f'Content-Type: multipart/mixed; boundary="{self.Boundary}"\r\n')
-
         #header parts
         current_time = time.time()
         current_date = time.ctime(current_time)
         result += (f'Date: {current_date}\r\n')
-        
-        result += (self.MIME_Version + '\r\n')
         
         result += (f'From: {sender_name} <{sender_mail}>\r\n')
         
@@ -101,6 +96,8 @@ class Email:
             
         result += (f'Subject: {self.Subject}\r\n')
         
+        result += (MIME_VERSION + '\r\n')
+        
         #body parts
         if (len(self.MIME_Parts) == 1):
             result += (self.MIME_Parts[0].Headers + '\r\n')
@@ -108,20 +105,23 @@ class Email:
                 if (i != '') :
                     result += (i + '\r\n')
         else:         
-            result += ('\r\n' + self.Boundary + '\r\n')
+            self.Boundary = GenerateBoundary()
+            result += (f'Content-Type: multipart/mixed; boundary="{self.Boundary}"\r\n')
+            
+            result += ('\r\n--' + self.Boundary + '\r\n')
             result += (self.MIME_Parts[0].Headers + '\r\n')
             for i in re.split('\r\n',self.MIME_Parts[0].Content):
                 result += (i + '\r\n')
             
             for i in range(1, len(self.MIME_Parts)):
-                result += (self.Boundary + '\r\n')
+                result += ('--' + self.Boundary + '\r\n')
                 result += (self.MIME_Parts[i].Headers + '\r\n')
                 data = self.MIME_Parts[i].Content
                 while (len(data) > 0):
                     result += (data[:LINE_LENGTH] + '\r\n')
                     data = data[LINE_LENGTH:]
                 
-            result += (self.Boundary + '--\r\n')
+            result += ('--' + self.Boundary + '--\r\n')
         
         result += ('\r\n.\r\nQUIT\r\n')
         return result
@@ -129,4 +129,4 @@ class Email:
 def GenerateBoundary() -> str:
     characters = string.ascii_letters + string.digits
     boundary = ''.join(random.choice(characters) for i in range(36))
-    return f'--{boundary}'
+    return boundary
