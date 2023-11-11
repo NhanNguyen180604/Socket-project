@@ -99,7 +99,7 @@ def SendMail():
         msg = 'EHLO [127.0.0.1]\r\n'
         client.sendall(msg.encode('utf-8'))
         
-        msg = f'MAIL FROM:<{user}>\r\n'
+        msg = f'MAIL FROM:<{usermail}>\r\n'
         client.sendall(msg.encode('utf-8'))
         
         recipentList = []
