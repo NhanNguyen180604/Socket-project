@@ -123,7 +123,6 @@ class Email:
                 
             result += ('--' + self.Boundary + '--\r\n')
         
-        result += ('\r\n.\r\nQUIT\r\n')
         return result
        
 def GenerateBoundary() -> str:

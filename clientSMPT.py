@@ -58,4 +58,7 @@ def SendMail():
         client.sendall(email.As_String(sender_mail=usermail, sender_name=username).encode('utf-8'))
         print('===========Finished sending============')
         
+        msg = '\r\n.\r\nQUIT\r\n'
+        client.sendall(msg.encode('utf-8'))
+        
         client.recv(1024)
