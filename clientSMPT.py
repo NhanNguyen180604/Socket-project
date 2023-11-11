@@ -6,19 +6,32 @@ import re
 import os
 import mimetypes
 import base64
+import json
 
 def SendMail():
-    HOST = '127.0.0.1'
-    PORT = 9696
-    
-    user = 'ntnhan@gmail.com'
-    name_of_user = "Nguyen Thanh Nhan"
+    config_file = 'config.json'
+    config : dict
+    HOST : str
+    PORT : int
+    usermail : str
+    username : str
+
+    with open(config_file, 'r') as fi:
+        config = json.load(fi)
+        HOST = config['General']['MailServer']
+        PORT = config['General']['SMTP']
+        usermail = config['General']['usermail']
+        username = config['General']['username']
+        
+    username = username.encode('utf-8')
+    username = base64.b64encode(username).decode('utf-8')
+    username = f'=?UTF-8?B?{username}?='
     
     #input Email content
     print("Enter email's detail, press enter to skip a field")
     user_email = email.message.EmailMessage(email.policy.SMTPUTF8)
     
-    user_email.add_header('From', f'{name_of_user} <{user}>')
+    user_email.add_header('From', f'{username} <{usermail}>')
     
     temp = input('To: ')
     if (temp != ''):
