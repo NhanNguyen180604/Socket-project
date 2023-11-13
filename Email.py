@@ -13,7 +13,7 @@ class MyMIME:
     Headers = ''
     Content = ''
     
-    def TextBody(self):
+    def CreateBodyHeader(self):
         Content_type = f'Content-Type: text/plain'
         charset = 'charset="utf-8"'
         Content_transfer_encoding = 'Content-Transfer-Encoding: 8bit'
@@ -36,21 +36,23 @@ class Email:
     
     def Input(self): 
         print("Enter email's detail, press enter to skip")
-        self.To = input('To: ') 
-        self.Cc = input('Cc: ')    
-        self.Bcc = input('Bcc: ')    
-        self.Subject = input('Subject: ')
+        user_input = {}
+        user_input['To'] = input('To: ') 
+        user_input['Cc'] = input('Cc: ')    
+        user_input['Bcc'] = input('Bcc: ')    
+        user_input['Subject'] = input('Subject: ')
         
+        user_input['MIME_Parts'] = []
         print(f'Body (each line should not exceed {LINE_LENGTH} letters):')
-        self.MIME_Parts.append(MyMIME())
-        self.MIME_Parts[0].TextBody()
+        user_input['MIME_Parts'].append(MyMIME())
+        user_input['MIME_Parts'][0].CreateBodyHeader()
         
         while True:
             line = input()
             if (line == ''):
                 break
-            self.MIME_Parts[0].Content += line[:76]
-            self.MIME_Parts[0].Content += '\r\n'
+            user_input['MIME_Parts'][0].Content += line[:LINE_LENGTH]
+            user_input['MIME_Parts'][0].Content += '\r\n'
     
         if (input('Do you want to send attachment (Y/N): ') == 'Y'):
             while True:
@@ -70,14 +72,24 @@ class Email:
                         attachment.CreateAttachmentHeader(mime_type[0], file_name)
                         attachment.Content = str(data)[2:-1]
                         attachment.Content += '\r\n'
-                        self.MIME_Parts.append(attachment)
+                        user_input['MIME_Parts'].append(attachment)
                         
                     if (input('Do you want to attach another file (Y/N): ') != 'Y'):
                         break
                 
                 else:
                     print('You entered an invalid path!')
-                
+                    
+        self.Input_By_Dict(user_input)
+    
+    def Input_By_Dict(self, fields: dict):
+        self.To = fields['To']
+        self.Cc = fields['Cc']
+        self.Bcc = fields['Bcc']
+        self.Subject = fields['Subject']
+        for i in fields['MIME_Parts']:
+            self.MIME_Parts.append(i)
+    
     def As_String(self, sender_mail: str, sender_name: str) -> str:
         result = ''
         
