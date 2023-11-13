@@ -61,14 +61,14 @@ def SendMail():
                 raise RuntimeError('250 reply not received from server when sending RCPT')
         
         #send mail content
+        print('================Sending================')
         msg = 'DATA\r\n'
         client.sendall(msg.encode('utf-8'))
         
-        print('================Sending================')
         client.sendall(email.As_String(sender_mail=usermail, sender_name=username).encode('utf-8'))
-        print('===========Finished sending============')
         
         msg = '\r\n.\r\nQUIT\r\n'
         client.sendall(msg.encode('utf-8'))
         
         client.recv(1024)
+        print('===========Finished sending============')
