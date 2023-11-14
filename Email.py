@@ -4,7 +4,6 @@ import time
 import os
 import mimetypes
 import base64
-import re
 
 LINE_LENGTH = 76
 MIME_VERSION = 'MIME-Version: 1.0'
@@ -113,7 +112,7 @@ class Email:
         #body parts
         if (len(self.MIME_Parts) == 1):
             result += (self.MIME_Parts[0].Headers + '\r\n')
-            for i in re.split('\r\n',self.MIME_Parts[0].Content):
+            for i in self.MIME_Parts[0].Content.split('\r\n'):
                 if (i != '') :
                     result += (i + '\r\n')
         else:         
@@ -122,7 +121,7 @@ class Email:
             
             result += ('\r\n--' + self.Boundary + '\r\n')
             result += (self.MIME_Parts[0].Headers + '\r\n')
-            for i in re.split('\r\n',self.MIME_Parts[0].Content):
+            for i in self.MIME_Parts[0].Content.split('\r\n'):
                 result += (i + '\r\n')
             
             for i in range(1, len(self.MIME_Parts)):

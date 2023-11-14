@@ -1,6 +1,5 @@
 import socket
 import Email
-import re
 import base64
 import json
 
@@ -48,11 +47,11 @@ def SendMail():
         
         recipentList = []
         if (email.To != ''):
-            recipentList += re.split(', |,| ', email.To)
+            recipentList += email.To.split(', ')
         if (email.Cc != ''):
-            recipentList += re.split(', |,| ', email.Cc)
+            recipentList += email.Cc.split(', ')
         if (email.Bcc != ''):
-            recipentList += re.split(', |,| ', email.Bcc)
+            recipentList += email.Bcc.split(', ')
             
         for rcpt in list(set(recipentList)):
             msg = f'RCPT TO:<{rcpt}>\r\n'

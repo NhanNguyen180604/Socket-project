@@ -1,5 +1,4 @@
 import tkinter as tk
-import re
 import os
 import mimetypes
 import base64
@@ -22,13 +21,13 @@ def SendMail():
         email.MIME_Parts.append(Email.MyMIME())
         email.MIME_Parts[0].CreateBodyHeader()
         
-        for line in re.split('\n', content):
+        for line in content.split('\n'):
             if (line != ''):
                 email.MIME_Parts[0].Content += line[:LINE_LENGTH]
                 email.MIME_Parts[0].Content += '\r\n'
         
         #get attachment
-        for input_path in re.split(',', ent_attachment.get()):
+        for input_path in ent_attachment.get().split(', '):
             if (os.path.exists(input_path) and os.path.isfile(input_path) and (os.path.getsize(input_path) <= 3e+6)):
                 mime_type = mimetypes.guess_type(input_path, strict=True)
                 file_name = os.path.basename(input_path)
@@ -79,11 +78,11 @@ def SendMail():
             
             recipentList = []
             if (email.To != ''):
-                recipentList += re.split(', |,| ', email.To)
+                recipentList += email.To.split(', ')
             if (email.Cc != ''):
-                recipentList += re.split(', |,| ', email.Cc)
+                recipentList += email.Cc.split(', ')
             if (email.Bcc != ''):
-                recipentList += re.split(', |,| ', email.Bcc)
+                recipentList += email.Bcc.split(', ')
                 
             for rcpt in list(set(recipentList)):
                 msg = f'RCPT TO:<{rcpt}>\r\n'
