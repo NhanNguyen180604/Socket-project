@@ -2,7 +2,6 @@ import socket
 import time
 import email.message
 import email.policy
-import re
 import os
 import mimetypes
 import base64
@@ -104,11 +103,11 @@ def SendMail():
         
         recipentList = []
         if (user_email['To'] != None):
-            recipentList += list(set(re.split(', |,| ', str(user_email['To']))))
+            recipentList += list(set(user_email['To'].split(', ')))
         if (user_email['Cc'] != None):
-            recipentList += list(set(re.split(', |,| ', str(user_email['Cc']))))
+            recipentList += list(set(user_email['Cc'].split(', ')))
         if (user_email['Bcc'] != None):
-            recipentList += list(set(re.split(', |,| ', str(user_email['Bcc']))))
+            recipentList += list(set(user_email['Bcc'].split(', ')))
         
         for rcpt in recipentList:
             msg = f'RCPT TO:<{rcpt}>\r\n'
