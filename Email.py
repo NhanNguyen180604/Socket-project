@@ -23,7 +23,7 @@ class MyMIME:
         Content_type = f'Content-Type: {mime_type}; name="{file_name}"'
         Content_transfer_encoding = 'Content-Transfer-Encoding: base64'
         Content_disposition = 'Content-Disposition: attachment'
-        self.Headers = f'{Content_type}\r\n{Content_transfer_encoding}\r\n{Content_disposition}; filename="{file_name}"\r\n{MIME_VERSION}\r\n'
+        self.Headers = f'{Content_type}\r\n{Content_transfer_encoding}\r\n{Content_disposition}; filename="{file_name}"\r\n'
     
     
 class Email:

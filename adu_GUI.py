@@ -114,7 +114,7 @@ def SendMail():
     frame4 = tk.Frame(master=send_window)
     content_frame = tk.Frame(master=send_window)
     attachment_frame = tk.Frame(master=send_window)
-    bton_send = tk.Button(master=send_window, command=Send, text='SENT', font=('Times New Roman', 16, 'normal'))
+    bton_send = tk.Button(master=send_window, command=Send, text='SEND', font=('Times New Roman', 16, 'normal'))
     
     lbl_to = tk.Label(master=frame1, text='To', font=('Times New Roman', 16, 'normal'), width=10, anchor='w')
     lbl_cc = tk.Label(master=frame2, text='Cc', font=('Times New Roman', 16, 'normal'), width=10, anchor='w')
