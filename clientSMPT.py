@@ -5,7 +5,7 @@ import json
 import re
 
 def SendMail():
-    config_file = 'C:\GIALAC\Anaconda\SocketProgramming\config.json'
+    config_file = 'config.json'
     config : dict
     HOST : str
     PORT : int
