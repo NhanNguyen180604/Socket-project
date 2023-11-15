@@ -4,6 +4,7 @@ import time
 import os
 import mimetypes
 import base64
+import re
 
 LINE_LENGTH = 76
 MIME_VERSION = 'MIME-Version: 1.0'
@@ -92,6 +93,10 @@ class Email:
     def As_String(self, sender_mail: str, sender_name: str) -> str:
         result = ''
         
+        if (len(self.MIME_Parts) > 1):
+            self.Boundary = GenerateBoundary()
+            result += (f'Content-Type: multipart/mixed; boundary="{self.Boundary}"\r\n')
+        
         #header parts
         current_time = time.time()
         current_date = time.ctime(current_time)
@@ -112,16 +117,13 @@ class Email:
         #body parts
         if (len(self.MIME_Parts) == 1):
             result += (self.MIME_Parts[0].Headers + '\r\n')
-            for i in self.MIME_Parts[0].Content.split('\r\n'):
+            for i in re.split('\r\n', self.MIME_Parts[0].Content):
                 if (i != '') :
                     result += (i + '\r\n')
         else:         
-            self.Boundary = GenerateBoundary()
-            result += (f'Content-Type: multipart/mixed; boundary="{self.Boundary}"\r\n')
-            
-            result += ('\r\n--' + self.Boundary + '\r\n')
+            result += (self.Boundary + '\r\n')
             result += (self.MIME_Parts[0].Headers + '\r\n')
-            for i in self.MIME_Parts[0].Content.split('\r\n'):
+            for i in re.split('\r\n', self.MIME_Parts[0].Content):
                 result += (i + '\r\n')
             
             for i in range(1, len(self.MIME_Parts)):
