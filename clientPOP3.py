@@ -4,7 +4,7 @@ import os
 import json
 import re
 
-def checkMail():
+def CheckMail():
     config_file = "config.json"
     config : dict
     HOST : str
