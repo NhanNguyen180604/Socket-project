@@ -1,4 +1,5 @@
 import clientSMPT
+import clientPOP3
 
 def main():
     while True:
@@ -12,7 +13,7 @@ def main():
             case 1:
                 clientSMPT.SendMail()
             case 2:
-                pass
+                clientPOP3.CheckMail()
             case 3:
                 return
             case _:
