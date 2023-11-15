@@ -136,7 +136,7 @@ class Email:
                 if (i != b'') :
                     result += i + b'\r\n'
         else:         
-            result += (self.Boundary + b'\r\n')
+            result += (b'\r\n--' + self.Boundary + b'\r\n')
             result += (self.MIME_Parts[0].Headers + b'\r\n')
             for i in re.split(b'\r\n', self.MIME_Parts[0].Content):
                 result += (i + b'\r\n')

@@ -1,5 +1,6 @@
-import clientSMPT
+import clientSMTP
 import clientPOP3
+# import asyncio
 
 def main():
     while True:
@@ -11,7 +12,7 @@ def main():
         
         match choice:
             case 1:
-                clientSMPT.SendMail()
+                clientSMTP.SendMail()
             case 2:
                 clientPOP3.CheckMail()
             case 3:
