@@ -200,7 +200,7 @@ class Email:
                 if (i != '') :
                     result += i + '\r\n'
         else:         
-            result += (Boundary + '\r\n')
+            result += ('\r\n' + Boundary + '\r\n')
             result += (self.MIME_Parts[0].Headers.decode('utf-8') + '\r\n')
             for i in re.split('\r\n', self.MIME_Parts[0].Content.decode('utf-8')):
                 result += (i + '\r\n')
