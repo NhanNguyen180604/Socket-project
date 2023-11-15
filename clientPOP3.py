@@ -3,8 +3,9 @@ import base64
 import os
 import json
 import re
-def main():
-    config_file = "SocketProgramming\\config.json"
+
+def checkMail():
+    config_file = "config.json"
     config : dict
     HOST : str
     PORT : int
@@ -12,6 +13,7 @@ def main():
     password : str
     usermail : str
     username : str
+    
     with open(config_file, 'r') as fi:
         config = json.load(fi)
         HOST = config['General']['MailServer']
@@ -20,6 +22,7 @@ def main():
         usermail = config['General']['usermail']
         username = config['General']['username']
         password = config['General']['password']
+        
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientsocket:
         clientsocket.connect((HOST, PORT))
         response = clientsocket.recv(1024).decode(FORMAT)
@@ -46,6 +49,7 @@ def main():
         msg = "UIDL\r\n"
         clientsocket.sendall(msg.encode(FORMAT))
         clientsocket.recv(1024)
+        
         while nEmail > 0:
             print(f"Email: {nEmail}")
             msg = f"RETR {nEmail}\r\n"
@@ -85,6 +89,3 @@ def main():
             print('---------------------')
         msg = "QUIT\r\n"
         clientsocket.sendall(msg.encode(FORMAT))
-            
-if __name__ == '__main__':
-    main()
