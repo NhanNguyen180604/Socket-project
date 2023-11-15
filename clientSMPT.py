@@ -28,7 +28,8 @@ def SendMail():
     #input Email content
     email.Input()
             
-    # li = email.As_List(sender_mail=usermail, sender_name=username)
+    # z = email.As_String()
+    # print(z)
     
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
         #initialize TCP connection
@@ -47,27 +48,28 @@ def SendMail():
         client.sendall(msg.encode('utf-8'))
         
         recipentList = []
-        if (email.To != ''):
-            recipentList += re.split(',|, | ', email.To)
-        if (email.Cc != ''):
-            recipentList += re.split(',|, | ', email.Cc)
-        if (email.Bcc != ''):
-            recipentList += re.split(',|, | ', email.Bcc)
+        if (email.To != b''):
+            recipentList += re.split(b',|, | ', email.To)
+        if (email.Cc != b''):
+            recipentList += re.split(b',|, | ', email.Cc)
+        if (email.Bcc != b''):
+            recipentList += re.split(b',|, | ', email.Bcc)
             
         for rcpt in list(set(recipentList)):
-            msg = f'RCPT TO:<{rcpt}>\r\n'
-            client.sendall(msg.encode('utf-8'))
-            response = client.recv(1024).decode('utf-8')
-            if (response[:3] != '250'):
-                raise RuntimeError('Error sending RCPT')
+            if (rcpt != b''):
+                msg = b'RCPT TO:<' + rcpt + b'>\r\n'
+                client.sendall(msg)
+                response = client.recv(1024).decode('utf-8')
+                if (response[:3] != '250'):
+                    raise RuntimeError('Error sending RCPT')
         
         #send mail content
         msg = 'DATA\r\n'
         client.sendall(msg.encode('utf-8'))
         client.recv(1024)
         
-        msg = email.As_String(sender_mail=usermail, sender_name=username)
-        client.sendall(msg.encode('utf-8'))
+        msg = email.As_Byte()
+        client.sendall(msg)
         
         msg = '\r\n.\r\nQUIT\r\n'
         client.sendall(msg.encode('utf-8'))

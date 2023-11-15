@@ -5,42 +5,43 @@ import os
 import mimetypes
 import base64
 import re
+import json
 
 LINE_LENGTH = 76
 MIME_VERSION = 'MIME-Version: 1.0'
 
 class MyMIME:
-    Headers = ''
-    Content = ''
+    Headers = b''
+    Content = b''
     
     def CreateBodyHeader(self):
         Content_type = f'Content-Type: text/plain'
         charset = 'charset="utf-8"'
         Content_transfer_encoding = 'Content-Transfer-Encoding: 8bit'
-        self.Headers = f'{Content_type}; {charset}\r\n{Content_transfer_encoding}\r\n'
+        self.Headers = (f'{Content_type}; {charset}\r\n{Content_transfer_encoding}\r\n').encode('utf-8')
         
     def CreateAttachmentHeader(self, mime_type : str, file_name : str):
         Content_type = f'Content-Type: {mime_type}; name="{file_name}"'
         Content_transfer_encoding = 'Content-Transfer-Encoding: base64'
         Content_disposition = 'Content-Disposition: attachment'
-        self.Headers = f'{Content_type}\r\n{Content_transfer_encoding}\r\n{Content_disposition}; filename="{file_name}"\r\n'
+        self.Headers = (f'{Content_type}\r\n{Content_transfer_encoding}\r\n{Content_disposition}; filename="{file_name}"\r\n').encode('utf-8')
     
     
 class Email:
-    Subject = ''
-    To = ''
-    Cc = ''
-    Bcc = ''
-    Boundary = ''
+    Subject = b''
+    To = b''
+    Cc = b''
+    Bcc = b''
+    Boundary = b''
     MIME_Parts = []
     
-    def Input(self): 
+    def Input(self):             
         print("Enter email's detail, press enter to skip")
         user_input = {}
-        user_input['To'] = input('To: ') 
-        user_input['Cc'] = input('Cc: ')    
-        user_input['Bcc'] = input('Bcc: ')    
-        user_input['Subject'] = input('Subject: ')
+        user_input['To'] = input('To: ').encode('utf-8')
+        user_input['Cc'] = input('Cc: ').encode('utf-8')
+        user_input['Bcc'] = input('Bcc: ').encode('utf-8')   
+        user_input['Subject'] = input('Subject: ').encode('utf-8')
         
         user_input['MIME_Parts'] = []
         print(f'Body (each line should not exceed {LINE_LENGTH} letters):')
@@ -51,8 +52,8 @@ class Email:
             line = input()
             if (line == ''):
                 break
-            user_input['MIME_Parts'][0].Content += line[:LINE_LENGTH]
-            user_input['MIME_Parts'][0].Content += '\r\n'
+            line = line[:LINE_LENGTH] + '\r\n'
+            user_input['MIME_Parts'][0].Content += line.encode('utf-8')
     
         if (input('Do you want to send attachment (Y/N): ') == 'Y'):
             while True:
@@ -70,8 +71,8 @@ class Email:
                         data = base64.b64encode(data)
                         attachment = MyMIME()
                         attachment.CreateAttachmentHeader(mime_type[0], file_name)
-                        attachment.Content = str(data)[2:-1]
-                        attachment.Content += '\r\n'
+                        attachment.Content = data
+                        attachment.Content += '\r\n'.encode('utf-8')
                         user_input['MIME_Parts'].append(attachment)
                         
                     if (input('Do you want to attach another file (Y/N): ') != 'Y'):
@@ -90,55 +91,133 @@ class Email:
         for i in fields['MIME_Parts']:
             self.MIME_Parts.append(i)
     
-    def As_String(self, sender_mail: str, sender_name: str) -> str:
-        result = ''
+    def As_Byte(self) -> bytes:
+        config_file = 'config.json'
+        usermail = ''
+        username = ''
+        
+        with open(config_file, 'r') as fi:
+            config = json.load(fi)
+            usermail = config['General']['usermail']
+            username = config['General']['username']
+            
+        username = username.encode('utf-8')
+        username = base64.b64encode(username).decode('utf-8')
+        username = f'=?UTF-8?B?{username}?='
+        
+        result = b''
         
         if (len(self.MIME_Parts) > 1):
-            self.Boundary = GenerateBoundary()
-            result += (f'Content-Type: multipart/mixed; boundary="{self.Boundary}"\r\n')
+            if (self.Boundary == b''):
+                self.Boundary = GenerateBoundary()
+            result += b'Content-Type: multipart/mixed; boundary="' + self.Boundary + b'"\r\n'
+            
+        #header parts
+        current_time = time.time()
+        current_date = time.ctime(current_time)
+        result += (f'Date: {current_date}\r\n').encode('utf-8')
         
+        result += (f'From: {username} <{usermail}>\r\n').encode('utf-8')
+        
+        if (self.To != ''):
+            result += b'To: ' + self.To + b'\r\n'
+        
+        if (self.Cc != ''):
+            result += b'Cc: ' + self.Cc + b'\r\n'
+            
+        result += b'Subject: ' + self.Subject + b'\r\n'
+        
+        result += (MIME_VERSION + '\r\n').encode('utf-8')
+        
+        #body parts
+        if (len(self.MIME_Parts) == 1):
+            result += self.MIME_Parts[0].Headers + b'\r\n'
+            for i in re.split(b'\r\n', self.MIME_Parts[0].Content):
+                if (i != b'') :
+                    result += i + b'\r\n'
+        else:         
+            result += (self.Boundary + b'\r\n')
+            result += (self.MIME_Parts[0].Headers + b'\r\n')
+            for i in re.split(b'\r\n', self.MIME_Parts[0].Content):
+                result += (i + b'\r\n')
+            
+            for i in range(1, len(self.MIME_Parts)):
+                result += (b'--' + self.Boundary + b'\r\n')
+                result += (self.MIME_Parts[i].Headers + b'\r\n')
+                data = self.MIME_Parts[i].Content
+                while (len(data) > 0):
+                    result += (data[:LINE_LENGTH] + b'\r\n')
+                    data = data[LINE_LENGTH:]
+                
+            result += (b'--' + self.Boundary + b'--\r\n')
+        
+        return result
+    
+    def As_String(self) -> str:
+        config_file = 'config.json'
+        usermail = ''
+        username = ''
+        
+        with open(config_file, 'r') as fi:
+            config = json.load(fi)
+            usermail = config['General']['usermail']
+            username = config['General']['username']
+            
+        username = username.encode('utf-8')
+        username = base64.b64encode(username).decode('utf-8')
+        username = f'=?UTF-8?B?{username}?='
+        
+        result = ''
+        Boundary = ''
+        
+        if (len(self.MIME_Parts) > 1):
+            if (self.Boundary == b''):
+                self.Boundary = GenerateBoundary()
+            Boundary = self.Boundary.decode('utf-8')
+            result += f'Content-Type: multipart/mixed; boundary="{Boundary}"\r\n'
+            
         #header parts
         current_time = time.time()
         current_date = time.ctime(current_time)
         result += (f'Date: {current_date}\r\n')
         
-        result += (f'From: {sender_name} <{sender_mail}>\r\n')
+        result += (f'From: {username} <{usermail}>\r\n')
         
         if (self.To != ''):
-            result += (f'To: {self.To}\r\n')
+            result += f'To: {self.To.decode('utf-8')}\r\n'
         
         if (self.Cc != ''):
-            result += (f'Cc: {self.Cc}\r\n')
+            result += f'Cc: {self.Cc.decode('utf-8')}\r\n'
             
-        result += (f'Subject: {self.Subject}\r\n')
+        result += f'Subject: {self.Subject.decode('utf-8')}\r\n'
         
         result += (MIME_VERSION + '\r\n')
         
         #body parts
         if (len(self.MIME_Parts) == 1):
-            result += (self.MIME_Parts[0].Headers + '\r\n')
-            for i in re.split('\r\n', self.MIME_Parts[0].Content):
+            result += self.MIME_Parts[0].Headers.decode('utf-8') + '\r\n'
+            for i in re.split('\r\n', self.MIME_Parts[0].Content.decode('utf-8')):
                 if (i != '') :
-                    result += (i + '\r\n')
+                    result += i + '\r\n'
         else:         
-            result += (self.Boundary + '\r\n')
-            result += (self.MIME_Parts[0].Headers + '\r\n')
-            for i in re.split('\r\n', self.MIME_Parts[0].Content):
+            result += (Boundary + '\r\n')
+            result += (self.MIME_Parts[0].Headers.decode('utf-8') + '\r\n')
+            for i in re.split('\r\n', self.MIME_Parts[0].Content.decode('utf-8')):
                 result += (i + '\r\n')
             
             for i in range(1, len(self.MIME_Parts)):
-                result += ('--' + self.Boundary + '\r\n')
+                result += ('--' + Boundary + '\r\n')
                 result += (self.MIME_Parts[i].Headers + '\r\n')
                 data = self.MIME_Parts[i].Content
                 while (len(data) > 0):
-                    result += (data[:LINE_LENGTH] + '\r\n')
+                    result += (data[:LINE_LENGTH] + b'\r\n').decode('utf-8')
                     data = data[LINE_LENGTH:]
                 
-            result += ('--' + self.Boundary + '--\r\n')
+            result += ('--' + Boundary + '--\r\n')
         
         return result
        
-def GenerateBoundary() -> str:
+def GenerateBoundary() -> bytes:
     characters = string.ascii_letters + string.digits
     boundary = ''.join(random.choice(characters) for i in range(36))
-    return boundary
+    return boundary.encode('utf-8')
