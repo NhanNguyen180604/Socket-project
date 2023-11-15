@@ -6,6 +6,7 @@ import os
 import mimetypes
 import base64
 import json
+import re
 
 def SendMail():
     config_file = 'config.json'
@@ -103,21 +104,24 @@ def SendMail():
         
         recipentList = []
         if (user_email['To'] != None):
-            recipentList += list(set(user_email['To'].split(', ')))
+            recipentList += list(set(re.split(',|, | ', user_email['To'])))
         if (user_email['Cc'] != None):
-            recipentList += list(set(user_email['Cc'].split(', ')))
+            recipentList += list(set(re.split(',|, | ', user_email['To'])))
         if (user_email['Bcc'] != None):
-            recipentList += list(set(user_email['Bcc'].split(', ')))
+            recipentList += list(set(re.split(',|, | ', user_email['To'])))
         
         for rcpt in recipentList:
             msg = f'RCPT TO:<{rcpt}>\r\n'
             client.sendall(msg.encode('utf-8'))
+            if (client.recv(1024).decode('utf-8')[:3] != '250'):
+                raise RuntimeError('Error sending RCPT')
         
         del user_email['Bcc']    
         
         #send mail content
         msg = 'DATA\r\n'
         client.sendall(msg.encode('utf-8'))
+        client.recv(1024)
         
         current_time = time.time()
         current_date = time.ctime(current_time)
