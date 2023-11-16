@@ -6,6 +6,8 @@ import mimetypes
 import base64
 import re
 import json
+import math
+import multiprocessing
 
 LINE_LENGTH = 76
 MIME_VERSION = 'MIME-Version: 1.0'
@@ -144,9 +146,18 @@ class Email:
                 result += (b'--' + self.Boundary + b'\r\n')
                 result += (self.MIME_Parts[i].Headers + b'\r\n')
                 data = self.MIME_Parts[i].Content
-                while (len(data) > 0):
-                    result += (data[:LINE_LENGTH] + b'\r\n')
-                    data = data[LINE_LENGTH:]
+                
+                start = 0
+                data_chunk = []
+                jump = math.ceil((int(len(data)) / multiprocessing.cpu_count()) / LINE_LENGTH) * LINE_LENGTH
+                while (start < len(data)):
+                    data_chunk.append(data[start : start + jump])
+                    start += jump
+                    
+                with multiprocessing.Pool() as pool:
+                    items = pool.map(split_into_lines, data_chunk)
+                    for _ in items:
+                        result += _
                 
             result += (b'--' + self.Boundary + b'--\r\n')
         
@@ -206,11 +217,19 @@ class Email:
             
             for i in range(1, len(self.MIME_Parts)):
                 result += ('--' + Boundary + '\r\n')
-                result += (self.MIME_Parts[i].Headers + '\r\n')
+                result += (self.MIME_Parts[i].Headers.decode('utf-8') + '\r\n')
                 data = self.MIME_Parts[i].Content
-                while (len(data) > 0):
-                    result += (data[:LINE_LENGTH] + b'\r\n').decode('utf-8')
-                    data = data[LINE_LENGTH:]
+                start = 0
+                data_chunk = []
+                jump = math.ceil((int(len(data)) / multiprocessing.cpu_count()) / LINE_LENGTH) * LINE_LENGTH
+                while (start < len(data)):
+                    data_chunk.append(data[start : start + jump])
+                    start += jump
+                    
+                with multiprocessing.Pool() as pool:
+                    items = pool.map(split_into_lines, data_chunk)
+                    for _ in items:
+                        result += _.decode('utf-8')
                 
             result += ('--' + Boundary + '--\r\n')
         
@@ -220,3 +239,13 @@ def generate_boundary() -> bytes:
     characters = string.ascii_letters + string.digits
     boundary = ''.join(random.choice(characters) for i in range(36))
     return boundary.encode('utf-8')
+
+def split_into_lines(data: bytes):
+    result = b''
+    start = 0
+    while (start < len(data)):
+        result += data[start : start + LINE_LENGTH]
+        result += b'\r\n'
+        start += LINE_LENGTH
+                    
+    return result
