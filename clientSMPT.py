@@ -106,9 +106,9 @@ def SendMail():
         if (user_email['To'] != None):
             recipentList += list(set(re.split(',|, | ', user_email['To'])))
         if (user_email['Cc'] != None):
-            recipentList += list(set(re.split(',|, | ', user_email['To'])))
+            recipentList += list(set(re.split(',|, | ', user_email['Cc'])))
         if (user_email['Bcc'] != None):
-            recipentList += list(set(re.split(',|, | ', user_email['To'])))
+            recipentList += list(set(re.split(',|, | ', user_email['Bcc'])))
         
         for rcpt in recipentList:
             msg = f'RCPT TO:<{rcpt}>\r\n'
