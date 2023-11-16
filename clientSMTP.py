@@ -70,7 +70,7 @@ def SendMail():
         #=================================
         if (len(email.MIME_Parts) > 1):
             if (email.Boundary == b''):
-                email.Boundary == Email.generate_boundary()
+                email.Boundary = Email.generate_boundary()
             client.sendall(b'Content-Type: multipart/mixed; boundary="' + email.Boundary + b'"\r\n')
         
         #============send Date============
