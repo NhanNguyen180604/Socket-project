@@ -14,13 +14,13 @@ class MyMIME:
     Headers = b''
     Content = b''
     
-    def CreateBodyHeader(self):
+    def create_body_headers(self):
         Content_type = f'Content-Type: text/plain'
         charset = 'charset="utf-8"'
         Content_transfer_encoding = 'Content-Transfer-Encoding: 8bit'
         self.Headers = (f'{Content_type}; {charset}\r\n{Content_transfer_encoding}\r\n').encode('utf-8')
         
-    def CreateAttachmentHeader(self, mime_type : str, file_name : str):
+    def create_attachment_headers(self, mime_type : str, file_name : str):
         Content_type = f'Content-Type: {mime_type}; name="{file_name}"'
         Content_transfer_encoding = 'Content-Transfer-Encoding: base64'
         Content_disposition = 'Content-Disposition: attachment'
@@ -46,7 +46,7 @@ class Email:
         user_input['MIME_Parts'] = []
         print(f'Body (each line should not exceed {LINE_LENGTH} letters):')
         user_input['MIME_Parts'].append(MyMIME())
-        user_input['MIME_Parts'][0].CreateBodyHeader()
+        user_input['MIME_Parts'][0].create_body_headers()
         
         while True:
             line = input()
@@ -70,9 +70,8 @@ class Email:
                         data = fi.read()
                         data = base64.b64encode(data)
                         attachment = MyMIME()
-                        attachment.CreateAttachmentHeader(mime_type[0], file_name)
+                        attachment.create_attachment_headers(mime_type[0], file_name)
                         attachment.Content = data
-                        attachment.Content += '\r\n'.encode('utf-8')
                         user_input['MIME_Parts'].append(attachment)
                         
                     if (input('Do you want to attach another file (Y/N): ') != 'Y'):
@@ -109,7 +108,7 @@ class Email:
         
         if (len(self.MIME_Parts) > 1):
             if (self.Boundary == b''):
-                self.Boundary = GenerateBoundary()
+                self.Boundary = generate_boundary()
             result += b'Content-Type: multipart/mixed; boundary="' + self.Boundary + b'"\r\n'
             
         #header parts
@@ -172,7 +171,7 @@ class Email:
         
         if (len(self.MIME_Parts) > 1):
             if (self.Boundary == b''):
-                self.Boundary = GenerateBoundary()
+                self.Boundary = generate_boundary()
             Boundary = self.Boundary.decode('utf-8')
             result += f'Content-Type: multipart/mixed; boundary="{Boundary}"\r\n'
             
@@ -217,7 +216,7 @@ class Email:
         
         return result
        
-def GenerateBoundary() -> bytes:
+def generate_boundary() -> bytes:
     characters = string.ascii_letters + string.digits
     boundary = ''.join(random.choice(characters) for i in range(36))
     return boundary.encode('utf-8')
