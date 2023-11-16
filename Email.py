@@ -120,10 +120,10 @@ class Email:
         
         result += (f'From: {username} <{usermail}>\r\n').encode('utf-8')
         
-        if (self.To != ''):
+        if (self.To != b''):
             result += b'To: ' + self.To + b'\r\n'
         
-        if (self.Cc != ''):
+        if (self.Cc != b''):
             result += b'Cc: ' + self.Cc + b'\r\n'
             
         result += b'Subject: ' + self.Subject + b'\r\n'
