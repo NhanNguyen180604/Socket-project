@@ -6,8 +6,6 @@ import mimetypes
 import base64
 import re
 import json
-import math
-import multiprocessing
 
 LINE_LENGTH = 76
 MIME_VERSION = 'MIME-Version: 1.0'
@@ -35,6 +33,7 @@ class Email:
     Cc = b''
     Bcc = b''
     Boundary = b''
+    Date = ''
     MIME_Parts = []
     
     def Input(self):             
@@ -115,8 +114,8 @@ class Email:
             
         #header parts
         current_time = time.time()
-        current_date = time.ctime(current_time)
-        result += (f'Date: {current_date}\r\n').encode('utf-8')
+        self.Date = time.ctime(current_time)
+        result += (f'Date: {self.Date}\r\n').encode('utf-8')
         
         result += (f'From: {username} <{usermail}>\r\n').encode('utf-8')
         
@@ -148,16 +147,9 @@ class Email:
                 data = self.MIME_Parts[i].Content
                 
                 start = 0
-                data_chunk = []
-                jump = math.ceil((int(len(data)) / multiprocessing.cpu_count()) / LINE_LENGTH) * LINE_LENGTH
                 while (start < len(data)):
-                    data_chunk.append(data[start : start + jump])
-                    start += jump
-                    
-                with multiprocessing.Pool() as pool:
-                    items = pool.map(split_into_lines, data_chunk)
-                    for _ in items:
-                        result += _
+                    result += data[start : start + LINE_LENGTH] + b'\r\n'
+                    start += LINE_LENGTH
                 
             result += (b'--' + self.Boundary + b'--\r\n')
         
@@ -188,8 +180,8 @@ class Email:
             
         #header parts
         current_time = time.time()
-        current_date = time.ctime(current_time)
-        result += (f'Date: {current_date}\r\n')
+        self.Date = time.ctime(current_time)
+        result += (f'Date: {self.Date}\r\n')
         
         result += (f'From: {username} <{usermail}>\r\n')
         
@@ -210,7 +202,7 @@ class Email:
                 if (i != '') :
                     result += i + '\r\n'
         else:         
-            result += ('\r\n' + Boundary + '\r\n')
+            result += ('\r\n--' + Boundary + '\r\n')
             result += (self.MIME_Parts[0].Headers.decode('utf-8') + '\r\n')
             for i in re.split('\r\n', self.MIME_Parts[0].Content.decode('utf-8')):
                 result += (i + '\r\n')
@@ -220,32 +212,78 @@ class Email:
                 result += (self.MIME_Parts[i].Headers.decode('utf-8') + '\r\n')
                 data = self.MIME_Parts[i].Content
                 start = 0
-                data_chunk = []
-                jump = math.ceil((int(len(data)) / multiprocessing.cpu_count()) / LINE_LENGTH) * LINE_LENGTH
+                
                 while (start < len(data)):
-                    data_chunk.append(data[start : start + jump])
-                    start += jump
-                    
-                with multiprocessing.Pool() as pool:
-                    items = pool.map(split_into_lines, data_chunk)
-                    for _ in items:
-                        result += _.decode('utf-8')
+                    result += data[start : start + LINE_LENGTH].decode('utf-8') + '\r\n'
+                    start += LINE_LENGTH
                 
             result += ('--' + Boundary + '--\r\n')
         
         return result
-       
+    
+    # fake parser
+    def parse_from_bytes(self, data: bytes):
+        firstLine = data.split(sep=b'\r\n', maxsplit=1)[0]
+        
+        self.MIME_Parts.append(MyMIME())
+        
+        if (b'boundary=' not in firstLine):
+            headers = data.split(b'\r\n\r\n', 1)[0]
+            headers = headers.replace(b': ', b'\r\n')
+            headers = headers.replace(b'; ', b'\r\n')
+            headers = headers.replace(b'="', b'\r\n')
+            headers = headers.split(b'\r\n')
+            headers = dict(zip(headers[0::2], headers[1::2]))
+            
+            # get info
+            self.Date = str(headers[b'Date'])
+            self.To = (headers[b'To'] if (b'To' in headers) else b'')
+            self.Cc = (headers[b'Cc'] if (b'Cc' in headers) else b'')
+            self.Subject = (headers[b'Subject'] if (b'Subject' in headers) else b'')
+            
+            # get headers
+            for line in data.split(b'\r\n', 8)[6:8]:
+                self.MIME_Parts[0].Headers += line + b'\r\n'
+                
+            # get body
+            self.MIME_Parts[0].Content = data.split(b'\r\n\r\n', 1)[1]
+            self.MIME_Parts[0].Content += b'\r\n'
+            
+        else:
+            self.Boundary = firstLine.split(sep=b'"')[1]
+            data_part = re.split(b'--' + self.Boundary + b'\r\n|--' + self.Boundary + b'--\r\n', data)
+            
+            first_headers = data_part[0].replace(b': ', b'\r\n')
+            first_headers = first_headers.replace(b'; ', b'\r\n')
+            first_headers = first_headers.replace(b'="', b'\r\n')
+            first_headers = first_headers.split(b'\r\n')
+            first_headers = dict(zip(first_headers[0::2], first_headers[1::2]))
+            
+            # get info
+            self.Date = str(first_headers[b'Date'])
+            self.To = (first_headers[b'To'] if (b'To' in first_headers) else b'')
+            self.Cc = (first_headers[b'Cc'] if (b'Cc' in first_headers) else b'')
+            self.Subject = (first_headers[b'Subject'] if (b'Subject' in first_headers) else b'')
+
+            # get body
+            body = data_part[1]
+            for line in body.split(b'\r\n', 3)[0:2]:
+                self.MIME_Parts[0].Headers += line + b'\r\n'
+                
+            self.MIME_Parts[0].Content = body.split(b'\r\n\r\n', 1)[1][:-2]  # use slice to remove the last \r\n
+            
+            # get attachment
+            for i in range(2, len(data_part) - 1):
+                self.MIME_Parts.append(MyMIME())
+                for line in data_part[i].split(b'\r\n', 4)[0:3]:
+                    self.MIME_Parts[i - 1].Headers += line + b'\r\n'
+                    
+                self.MIME_Parts[i - 1].Content = data_part[i].split(b'\r\n\r\n', 1)[1]
+                self.MIME_Parts[i - 1].Content = self.MIME_Parts[i - 1].Content.replace(b'\r\n', b'')
+                
+        return self
+    
 def generate_boundary() -> bytes:
     characters = string.ascii_letters + string.digits
     boundary = ''.join(random.choice(characters) for i in range(36))
     return boundary.encode('utf-8')
-
-def split_into_lines(data: bytes):
-    result = b''
-    start = 0
-    while (start < len(data)):
-        result += data[start : start + LINE_LENGTH]
-        result += b'\r\n'
-        start += LINE_LENGTH
-                    
-    return result
