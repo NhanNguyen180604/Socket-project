@@ -148,8 +148,8 @@ class Email:
                 
                 start = 0
                 while (start < len(data)):
-                    result += data[start : start + LINE_LENGTH] + b'\r\n'
-                    start += LINE_LENGTH
+                    result += data[start : start + BUFFER_SIZE] + b'\r\n'
+                    start += BUFFER_SIZE
                 
             result += (b'--' + self.Boundary + b'--\r\n')
         
@@ -201,8 +201,8 @@ class Email:
                 start = 0
                 
                 while (start < len(data)):
-                    result += data[start : start + LINE_LENGTH].decode('utf-8') + '\r\n'
-                    start += LINE_LENGTH
+                    result += data[start : start + BUFFER_SIZE].decode('utf-8') + '\r\n'
+                    start += BUFFER_SIZE
                 
             result += ('--' + Boundary + '--\r\n')
         
