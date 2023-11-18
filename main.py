@@ -1,6 +1,5 @@
 import clientSMTP
 import clientPOP3
-# import asyncio
 
 def main():
     while True:

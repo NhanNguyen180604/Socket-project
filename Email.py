@@ -28,17 +28,28 @@ class MyMIME:
     
     
 class Email:
-    Subject = b''
+    From = b''
     To = b''
     Cc = b''
     Bcc = b''
+    Subject = b''
     Boundary = b''
     Date = ''
     MIME_Parts = []
     
     def Input(self):             
+        with open('config.json', 'r') as fi:
+            config = json.load(fi)
+            usermail = config['General']['usermail']
+            username = config['General']['username']
+            
+        username = username.encode('utf-8')
+        username = base64.b64encode(username).decode('utf-8')
+        username = f'=?UTF-8?B?{username}?='
+        
         print("Enter email's detail, press enter to skip")
         user_input = {}
+        user_input['From'] = f'{username} <{usermail}>'.encode('utf-8')
         user_input['To'] = input('To: ').encode('utf-8')
         user_input['Cc'] = input('Cc: ').encode('utf-8')
         user_input['Bcc'] = input('Bcc: ').encode('utf-8')   
@@ -84,6 +95,7 @@ class Email:
         self.Input_By_Dict(user_input)
     
     def Input_By_Dict(self, fields: dict):
+        self.From = fields['From']
         self.To = fields['To']
         self.Cc = fields['Cc']
         self.Bcc = fields['Bcc']
@@ -91,20 +103,7 @@ class Email:
         for i in fields['MIME_Parts']:
             self.MIME_Parts.append(i)
     
-    def As_Byte(self) -> bytes:
-        config_file = 'config.json'
-        usermail = ''
-        username = ''
-        
-        with open(config_file, 'r') as fi:
-            config = json.load(fi)
-            usermail = config['General']['usermail']
-            username = config['General']['username']
-            
-        username = username.encode('utf-8')
-        username = base64.b64encode(username).decode('utf-8')
-        username = f'=?UTF-8?B?{username}?='
-        
+    def As_Byte(self) -> bytes:     
         result = b''
         
         if (len(self.MIME_Parts) > 1):
@@ -117,7 +116,7 @@ class Email:
         self.Date = time.ctime(current_time)
         result += (f'Date: {self.Date}\r\n').encode('utf-8')
         
-        result += (f'From: {username} <{usermail}>\r\n').encode('utf-8')
+        result += b'From: ' + self.From + b'\r\n'
         
         if (self.To != b''):
             result += b'To: ' + self.To + b'\r\n'
@@ -155,20 +154,7 @@ class Email:
         
         return result
     
-    def As_String(self) -> str:
-        config_file = 'config.json'
-        usermail = ''
-        username = ''
-        
-        with open(config_file, 'r') as fi:
-            config = json.load(fi)
-            usermail = config['General']['usermail']
-            username = config['General']['username']
-            
-        username = username.encode('utf-8')
-        username = base64.b64encode(username).decode('utf-8')
-        username = f'=?UTF-8?B?{username}?='
-        
+    def As_String(self) -> str:    
         result = ''
         Boundary = ''
         
@@ -183,7 +169,7 @@ class Email:
         self.Date = time.ctime(current_time)
         result += (f'Date: {self.Date}\r\n')
         
-        result += (f'From: {username} <{usermail}>\r\n')
+        result += f'From: {self.From.decode('utf-8')}\r\n'
         
         if (self.To != ''):
             result += f'To: {self.To.decode('utf-8')}\r\n'
@@ -236,6 +222,7 @@ class Email:
             headers = dict(zip(headers[0::2], headers[1::2]))
             
             # get info
+            self.From = headers[b'From']
             self.Date = str(headers[b'Date'])
             self.To = (headers[b'To'] if (b'To' in headers) else b'')
             self.Cc = (headers[b'Cc'] if (b'Cc' in headers) else b'')
@@ -246,8 +233,7 @@ class Email:
                 self.MIME_Parts[0].Headers += line + b'\r\n'
                 
             # get body
-            self.MIME_Parts[0].Content = data.split(b'\r\n\r\n', 1)[1]
-            self.MIME_Parts[0].Content += b'\r\n'
+            self.MIME_Parts[0].Content = data.split(b'\r\n\r\n', 1)[1][:-2]
             
         else:
             self.Boundary = firstLine.split(sep=b'"')[1]
@@ -260,6 +246,7 @@ class Email:
             first_headers = dict(zip(first_headers[0::2], first_headers[1::2]))
             
             # get info
+            self.From = first_headers[b'From']
             self.Date = str(first_headers[b'Date'])
             self.To = (first_headers[b'To'] if (b'To' in first_headers) else b'')
             self.Cc = (first_headers[b'Cc'] if (b'Cc' in first_headers) else b'')
