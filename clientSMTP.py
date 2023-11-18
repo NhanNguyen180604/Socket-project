@@ -113,9 +113,9 @@ def SendMail():
                 client.sendall(email.MIME_Parts[i].Headers + b'\r\n')
                 start = 0
                 while (start < len(email.MIME_Parts[i].Content)):
-                    client.sendall(email.MIME_Parts[i].Content[start : start + Email.LINE_LENGTH])
+                    client.sendall(email.MIME_Parts[i].Content[start : start + Email.BUFFER_SIZE])
                     client.sendall(b'\r\n')
-                    start += Email.LINE_LENGTH
+                    start += Email.BUFFER_SIZE
                 
             client.sendall(b'--' + email.Boundary + b'--\r\n')
             

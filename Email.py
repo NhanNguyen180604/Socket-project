@@ -9,6 +9,7 @@ import json
 
 LINE_LENGTH = 76
 MIME_VERSION = 'MIME-Version: 1.0'
+BUFFER_SIZE = 10000
 
 class MyMIME:
     Headers = b''
