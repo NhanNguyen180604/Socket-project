@@ -29,14 +29,16 @@ class MyMIME:
     
     
 class Email:
-    From = b''
-    To = b''
-    Cc = b''
-    Bcc = b''
-    Subject = b''
-    Boundary = b''
-    Date = ''
-    MIME_Parts = []
+    def __init__(self):
+        self.From = b''
+        self.To = b''
+        self.Cc = b''
+        self.Bcc = b''
+        self.Subject = b''
+        self.Boundary = b''
+        self.Date = ''
+        self.MIME_Parts = []
+        
     
     def Input(self):             
         with open('config.json', 'r') as fi:
@@ -230,7 +232,7 @@ class Email:
             self.Subject = (headers[b'Subject'] if (b'Subject' in headers) else b'')
             
             # get headers
-            for line in data.split(b'\r\n', 8)[6:8]:
+            for line in data.split(b'\r\n', 8)[5:7]:
                 self.MIME_Parts[0].Headers += line + b'\r\n'
                 
             # get body
