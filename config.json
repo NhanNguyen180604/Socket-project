@@ -4,9 +4,10 @@
         "password": "12345678",
         "username": "Nguyen Thanh Nhan",
         "MailServer": "127.0.0.1",
-        "FORMAT":"utf-8",
+        "FORMAT": "utf-8",
         "SMTP": 9696,
-        "POP3": 6969
+        "POP3": 6969,
+        "Autoload": 10
     },
     "Filter": {
         "Subject": {

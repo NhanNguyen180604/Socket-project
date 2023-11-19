@@ -1,4 +1,4 @@
-import clientSMPT
+import clientSMTP
 import clientPOP3
 
 def main():
@@ -11,7 +11,7 @@ def main():
         
         match choice:
             case 1:
-                clientSMPT.SendMail()
+                clientSMTP.SendMail()
             case 2:
                 clientPOP3.GetMessage()
                 clientPOP3.CheckMail()
