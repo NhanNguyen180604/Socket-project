@@ -4,12 +4,47 @@
         "password": "12345678",
         "username": "Nguyen Thanh Nhan",
         "MailServer": "127.0.0.1",
-        "FORMAT":"utf-8",
+        "FORMAT": "utf-8",
         "SMTP": 9696,
-        "POP3": 6969
+        "POP3": 6969,
+        "Autoload": 10
     },
     "Filter": {
-        "Subject" : {"Important" : ["urgent", "ASAP", "emergency"]},
-        "Content" : {"College" : ["project", "GPA", "exam"]}
+        "Subject": {
+            "Important": [
+                "urgent",
+                "ASAP",
+                "emergency"
+            ],
+            "College": [
+                "school fee",
+                "change class room"
+            ],
+            "Spam": [
+                "crack",
+                "hack",
+                "free minecraft"
+            ]
+        },
+        "Content": {
+            "College": [
+                "project",
+                "GPA",
+                "exam"
+            ],
+            "Spam": [
+                "crack minecraft",
+                "free elden ring",
+                "co gai ban ve so kiem duoc 100 ty trong 1 nam"
+            ]
+        },
+        "From": {
+            "College": [
+                "@clc.fitus.edu.vn", "@fit.hcmus.edu.vn"
+            ],
+            "Spam": [
+                ".ru"
+            ]
+        }
     }
 }
