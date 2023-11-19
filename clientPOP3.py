@@ -73,9 +73,10 @@ def GetMessage():
             os.makedirs(os.path.dirname(filepath),exist_ok=True)
             with open(filepath, 'w') as fi:
                 fi.write(filecontent)
-            nEmail -=1
+            nEmail -= 1
         msg = "QUIT\r\n"
         clientsocket.sendall(msg.encode(FORMAT))
+        
 def CheckMail():
     print("Here is the list of folders in your mailbox:")
     print("1. Inbox")
@@ -134,6 +135,7 @@ def get_folder_name(folder_number):
         4: "Spam",
     }
     return folders.get(folder_number, "Unknown")
+
 def string_parser(response:str):
     email = ''
     From = ''
@@ -182,6 +184,7 @@ def string_parser(response:str):
             email+=f'\n{filename}\n{filedata}\n'
     email+='\n.'
     return email, From, Subject, Content
+
 def filter(From:str, Subject:str, Content:str) -> str:
     with open('SocketProgramming/config.json', 'r') as fin:
         config = json.load(fin)
@@ -206,6 +209,4 @@ def filter(From:str, Subject:str, Content:str) -> str:
         if (any(key in temp for key in Keywords)):
             return Folder
     
-    return 'Inbox'
-
-        
+    return 'Inbox'    

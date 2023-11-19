@@ -1,12 +1,12 @@
 {
     "General": {
-        "usermail": "LarGar@hehe.com",
-        "password": "largar123456",
-        "username": "Larsson Garner",
+        "usermail": "ntnhan@gmail.com",
+        "password": "12345678",
+        "username": "Nguyen Thanh Nhan",
         "MailServer": "127.0.0.1",
         "FORMAT":"utf-8",
-        "SMTP": 2225,
-        "POP3": 3335
+        "SMTP": 9696,
+        "POP3": 6969
     },
     "Filter": {
         "Subject": {
