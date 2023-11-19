@@ -13,6 +13,7 @@ def main():
             case 1:
                 clientSMPT.SendMail()
             case 2:
+                clientPOP3.GetMessage()
                 clientPOP3.CheckMail()
             case 3:
                 return
