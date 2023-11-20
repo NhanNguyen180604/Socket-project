@@ -13,8 +13,9 @@ MIME_VERSION = 'MIME-Version: 1.0'
 BUFFER_SIZE = 10000
 
 class MyMIME:
-    Headers = b''
-    Content = b''
+    def __init__(self):
+        self.Headers = b''
+        self.Content = b''
     
     def create_body_headers(self):
         Content_type = f'Content-Type: text/plain'
@@ -28,7 +29,6 @@ class MyMIME:
         Content_disposition = 'Content-Disposition: attachment'
         self.Headers = (f'{Content_type}\r\n{Content_transfer_encoding}\r\n{Content_disposition}; filename="{file_name}"\r\n').encode('utf-8')
     
-    
 class Email:
     def __init__(self):
         self.From = b''
@@ -40,7 +40,6 @@ class Email:
         self.Date = ''
         self.MIME_Parts = []
         
-    
     def Input(self):             
         with open('config.json', 'r') as fi:
             config = json.load(fi)
@@ -53,6 +52,7 @@ class Email:
         
         print("Enter email's detail, press enter to skip")
         user_input = {}
+        user_input['Date'] = time.ctime(time.time())
         user_input['From'] = f'{username} <{usermail}>'.encode('utf-8')
         user_input['To'] = input('To: ').encode('utf-8')
         user_input['Cc'] = input('Cc: ').encode('utf-8')
@@ -99,6 +99,7 @@ class Email:
         self.Input_By_Dict(user_input)
     
     def Input_By_Dict(self, fields: dict):
+        self.Date = fields['Date']
         self.From = fields['From']
         self.To = fields['To']
         self.Cc = fields['Cc']
@@ -116,8 +117,6 @@ class Email:
             result.write(b'Content-Type: multipart/mixed; boundary="' + self.Boundary + b'"\r\n')
             
         #header parts
-        current_time = time.time()
-        self.Date = time.ctime(current_time)
         result.write((f'Date: {self.Date}\r\n').encode('utf-8'))
         
         result.write(b'From: ' + self.From + b'\r\n')
@@ -158,22 +157,14 @@ class Email:
         
         return result.getvalue()
     
+    # use this to print email content
     def As_String(self) -> str:    
         result = io.StringIO()
-        Boundary = ''
-        
-        if (len(self.MIME_Parts) > 1):
-            if (self.Boundary == b''):
-                self.Boundary = generate_boundary()
-            Boundary = self.Boundary.decode('utf-8')
-            result.write(f'Content-Type: multipart/mixed; boundary="{Boundary}"\n')
-            
+           
         #header parts
-        current_time = time.time()
-        self.Date = time.ctime(current_time)
         result.write(f'Date: {self.Date}\n')
         
-        result.write(f'From: {self.From.decode('utf-8')}\n')
+        result.write(f'From: {self.From.decode('utf-8').split()[1]}\n')
         
         if (self.To != b''):
             result.write(f'To: {self.To.decode('utf-8')}\n')
@@ -183,37 +174,20 @@ class Email:
             
         result.write(f'Subject: {self.Subject.decode('utf-8')}\n')
         
-        result.write(MIME_VERSION + '\n')
+        result.write('\n----------------------------------------------------------\n\n')
         
         #body parts
-        if (len(self.MIME_Parts) == 1):
-            headers = self.MIME_Parts[0].Headers.decode('utf-8')
-            headers = headers.replace('\r\n', '\n')
-            result.write(headers + '\n')
-            for i in re.split('\r\n', self.MIME_Parts[0].Content.decode('utf-8')):
-                if (i != '') :
-                    result.write(i + '\n')
-        else:         
-            result.write('\n--' + Boundary + '\n')
-            headers = self.MIME_Parts[0].Headers.decode('utf-8')
-            headers = headers.replace('\r\n', '\n')
-            result.write(headers + '\n')
-            for i in re.split('\r\n', self.MIME_Parts[0].Content.decode('utf-8')):
-                result.write(i + '\n')
-            
+        result.write(self.MIME_Parts[0].Content.decode('utf-8'))
+        
+        result.write('\n----------------------------------------------------------\n')
+        
+        result.write('\n')
+        if (len(self.MIME_Parts) > 1):
+            result.write('Attachment list\n')
             for i in range(1, len(self.MIME_Parts)):
-                result.write('--' + Boundary + '\n')
-                headers = self.MIME_Parts[i].Headers.decode('utf-8')
-                headers = headers.replace('\r\n', '\n')
-                result.write(headers + '\n')
-                data = self.MIME_Parts[i].Content
-                start = 0
-                
-                while (start < len(data)):
-                    result.write(data[start : start + BUFFER_SIZE].decode('utf-8') + '\n')
-                    start += BUFFER_SIZE
-                
-            result.write('--' + Boundary + '--\n')
+                first_header_line = self.MIME_Parts[i].Headers.split(b'\r\n')[0]
+                file_name = first_header_line.split(b'"')[1]
+                result.write(f'{i}. {file_name.decode('utf-8')}\n')
         
         return result.getvalue()
     
@@ -257,7 +231,7 @@ class Email:
             
             # get info
             self.From = first_headers[b'From']
-            self.Date = str(first_headers[b'Date'])
+            self.Date = str(first_headers[b'Date'])[2:-1]
             self.To = (first_headers[b'To'] if (b'To' in first_headers) else b'')
             self.Cc = (first_headers[b'Cc'] if (b'Cc' in first_headers) else b'')
             self.Subject = (first_headers[b'Subject'] if (b'Subject' in first_headers) else b'')
