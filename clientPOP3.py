@@ -130,7 +130,7 @@ def CheckMail():
             cursor.execute(command)
             files = cursor.fetchall()
             
-            msg = '| {:<5} || {:<10} || {:30} || {} |'
+            msg = '| {:<5} || {:<10} || {:30} || {:100} |'
             print(msg.format('No', '', 'From', 'Subject'))
             for i, file in enumerate(files, start=1):
                 if (file[5] == False):
