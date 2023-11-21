@@ -6,14 +6,16 @@ import mimetypes
 import base64
 import re
 import json
+import io
 
 LINE_LENGTH = 76
 MIME_VERSION = 'MIME-Version: 1.0'
 BUFFER_SIZE = 10000
 
 class MyMIME:
-    Headers = b''
-    Content = b''
+    def __init__(self):
+        self.Headers = b''
+        self.Content = b''
     
     def create_body_headers(self):
         Content_type = f'Content-Type: text/plain'
@@ -27,7 +29,6 @@ class MyMIME:
         Content_disposition = 'Content-Disposition: attachment'
         self.Headers = (f'{Content_type}\r\n{Content_transfer_encoding}\r\n{Content_disposition}; filename="{file_name}"\r\n').encode('utf-8')
     
-    
 class Email:
     def __init__(self):
         self.From = b''
@@ -39,7 +40,6 @@ class Email:
         self.Date = ''
         self.MIME_Parts = []
         
-    
     def Input(self):             
         with open('config.json', 'r') as fi:
             config = json.load(fi)
@@ -52,6 +52,7 @@ class Email:
         
         print("Enter email's detail, press enter to skip")
         user_input = {}
+        user_input['Date'] = time.ctime(time.time())
         user_input['From'] = f'{username} <{usermail}>'.encode('utf-8')
         user_input['To'] = input('To: ').encode('utf-8')
         user_input['Cc'] = input('Cc: ').encode('utf-8')
@@ -98,6 +99,7 @@ class Email:
         self.Input_By_Dict(user_input)
     
     def Input_By_Dict(self, fields: dict):
+        self.Date = fields['Date']
         self.From = fields['From']
         self.To = fields['To']
         self.Cc = fields['Cc']
@@ -107,110 +109,89 @@ class Email:
             self.MIME_Parts.append(i)
     
     def As_Byte(self) -> bytes:     
-        result = b''
+        result = io.BytesIO()
         
         if (len(self.MIME_Parts) > 1):
             if (self.Boundary == b''):
                 self.Boundary = generate_boundary()
-            result += b'Content-Type: multipart/mixed; boundary="' + self.Boundary + b'"\r\n'
+            result.write(b'Content-Type: multipart/mixed; boundary="' + self.Boundary + b'"\r\n')
             
         #header parts
-        current_time = time.time()
-        self.Date = time.ctime(current_time)
-        result += (f'Date: {self.Date}\r\n').encode('utf-8')
+        result.write((f'Date: {self.Date}\r\n').encode('utf-8'))
         
-        result += b'From: ' + self.From + b'\r\n'
+        result.write(b'From: ' + self.From + b'\r\n')
         
         if (self.To != b''):
-            result += b'To: ' + self.To + b'\r\n'
+            result.write(b'To: ' + self.To + b'\r\n')
         
         if (self.Cc != b''):
-            result += b'Cc: ' + self.Cc + b'\r\n'
+            result.write(b'Cc: ' + self.Cc + b'\r\n')
             
-        result += b'Subject: ' + self.Subject + b'\r\n'
+        result.write(b'Subject: ' + self.Subject + b'\r\n')
         
-        result += (MIME_VERSION + '\r\n').encode('utf-8')
+        result.write((MIME_VERSION + '\r\n').encode('utf-8'))
         
         #body parts
         if (len(self.MIME_Parts) == 1):
-            result += self.MIME_Parts[0].Headers + b'\r\n'
+            result.write(self.MIME_Parts[0].Headers + b'\r\n')
             for i in re.split(b'\r\n', self.MIME_Parts[0].Content):
                 if (i != b'') :
-                    result += i + b'\r\n'
+                    result.write(i + b'\r\n')
         else:         
-            result += (b'\r\n--' + self.Boundary + b'\r\n')
-            result += (self.MIME_Parts[0].Headers + b'\r\n')
+            result.write(b'\r\n--' + self.Boundary + b'\r\n')
+            result.write(self.MIME_Parts[0].Headers + b'\r\n')
             for i in re.split(b'\r\n', self.MIME_Parts[0].Content):
-                result += (i + b'\r\n')
+                result.write(i + b'\r\n')
             
             for i in range(1, len(self.MIME_Parts)):
-                result += (b'--' + self.Boundary + b'\r\n')
-                result += (self.MIME_Parts[i].Headers + b'\r\n')
+                result.write(b'--' + self.Boundary + b'\r\n')
+                result.write(self.MIME_Parts[i].Headers + b'\r\n')
                 data = self.MIME_Parts[i].Content
                 
                 start = 0
                 while (start < len(data)):
-                    result += data[start : start + BUFFER_SIZE] + b'\r\n'
+                    result.write(data[start : start + BUFFER_SIZE] + b'\r\n')
                     start += BUFFER_SIZE
                 
-            result += (b'--' + self.Boundary + b'--\r\n')
+            result.write(b'--' + self.Boundary + b'--\r\n')
         
-        return result
+        return result.getvalue()
     
+    # use this to print email content
     def As_String(self) -> str:    
-        result = ''
-        Boundary = ''
-        
-        if (len(self.MIME_Parts) > 1):
-            if (self.Boundary == b''):
-                self.Boundary = generate_boundary()
-            Boundary = self.Boundary.decode('utf-8')
-            result += f'Content-Type: multipart/mixed; boundary="{Boundary}"\r\n'
-            
+        result = io.StringIO()
+           
         #header parts
-        current_time = time.time()
-        self.Date = time.ctime(current_time)
-        result += (f'Date: {self.Date}\r\n')
+        result.write(f'Date: {self.Date}\n')
         
-        result += f'From: {self.From.decode('utf-8')}\r\n'
+        result.write(f'From: {self.From.decode('utf-8').split()[1]}\n')
         
-        if (self.To != ''):
-            result += f'To: {self.To.decode('utf-8')}\r\n'
+        if (self.To != b''):
+            result.write(f'To: {self.To.decode('utf-8')}\n')
         
-        if (self.Cc != ''):
-            result += f'Cc: {self.Cc.decode('utf-8')}\r\n'
+        if (self.Cc != b''):
+            result.write(f'Cc: {self.Cc.decode('utf-8')}\n')
             
-        result += f'Subject: {self.Subject.decode('utf-8')}\r\n'
+        result.write(f'Subject: {self.Subject.decode('utf-8')}\n')
         
-        result += (MIME_VERSION + '\r\n')
+        result.write('\n----------------------------------------------------------\n\n')
         
         #body parts
-        if (len(self.MIME_Parts) == 1):
-            result += self.MIME_Parts[0].Headers.decode('utf-8') + '\r\n'
-            for i in re.split('\r\n', self.MIME_Parts[0].Content.decode('utf-8')):
-                if (i != '') :
-                    result += i + '\r\n'
-        else:         
-            result += ('\r\n--' + Boundary + '\r\n')
-            result += (self.MIME_Parts[0].Headers.decode('utf-8') + '\r\n')
-            for i in re.split('\r\n', self.MIME_Parts[0].Content.decode('utf-8')):
-                result += (i + '\r\n')
-            
-            for i in range(1, len(self.MIME_Parts)):
-                result += ('--' + Boundary + '\r\n')
-                result += (self.MIME_Parts[i].Headers.decode('utf-8') + '\r\n')
-                data = self.MIME_Parts[i].Content
-                start = 0
-                
-                while (start < len(data)):
-                    result += data[start : start + BUFFER_SIZE].decode('utf-8') + '\r\n'
-                    start += BUFFER_SIZE
-                
-            result += ('--' + Boundary + '--\r\n')
+        result.write(self.MIME_Parts[0].Content.decode('utf-8'))
         
-        return result
+        result.write('\n----------------------------------------------------------\n')
+        
+        result.write('\n')
+        if (len(self.MIME_Parts) > 1):
+            result.write('Attachment list\n')
+            for i in range(1, len(self.MIME_Parts)):
+                first_header_line = self.MIME_Parts[i].Headers.split(b'\r\n')[0]
+                file_name = first_header_line.split(b'"')[1]
+                result.write(f'{i}. {file_name.decode('utf-8')}\n')
+        
+        return result.getvalue()
     
-    # fake parser
+    # fake parser, only work for this Email class
     def parse_from_bytes(self, data: bytes):
         firstLine = data.split(sep=b'\r\n', maxsplit=1)[0]
         
@@ -250,7 +231,7 @@ class Email:
             
             # get info
             self.From = first_headers[b'From']
-            self.Date = str(first_headers[b'Date'])
+            self.Date = str(first_headers[b'Date'])[2:-1]
             self.To = (first_headers[b'To'] if (b'To' in first_headers) else b'')
             self.Cc = (first_headers[b'Cc'] if (b'Cc' in first_headers) else b'')
             self.Subject = (first_headers[b'Subject'] if (b'Subject' in first_headers) else b'')
