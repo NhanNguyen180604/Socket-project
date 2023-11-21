@@ -2,7 +2,6 @@ import socket
 import base64
 import os
 import json
-import re
 from email.header import decode_header
 import Email
 
@@ -43,8 +42,7 @@ def GetMessage():
         msg = "STAT\r\n"
         clientsocket.sendall(msg.encode(FORMAT))
         response = clientsocket.recv(1024).decode(FORMAT)
-        pattern = re.compile(r'OK (\d+) \d+')
-        nEmail = int(pattern.search(response).group(1))
+        nEmail = int(response.split()[1])
         msg = "LIST\r\n"
         clientsocket.sendall(msg.encode(FORMAT))
         clientsocket.recv(1024)
@@ -61,12 +59,13 @@ def GetMessage():
             clientsocket.sendall(msg.encode(FORMAT))
             response = ''
             while True:
-                chunk = clientsocket.recv(1024).decode(FORMAT)
+                chunk = clientsocket.recv(10000).decode(FORMAT)
                 if not chunk:
                     break
                 response += chunk
                 if '\r\n.\r\n' in chunk:
                     break
+            response = response.split('\r\n', 1)[1]
             filecontent, From, Subject, Content = string_parser(response)
             folder = filter(From, Subject, Content)
             filepath = os.path.join(os.getcwd(),folder,uidlList[nEmail-1])
@@ -76,6 +75,7 @@ def GetMessage():
             nEmail -=1
         msg = "QUIT\r\n"
         clientsocket.sendall(msg.encode(FORMAT))
+
 def CheckMail():
     print("Here is the list of folders in your mailbox:")
     print("1. Inbox")
@@ -133,19 +133,23 @@ def get_folder_name(folder_number):
         3: "Important",
         4: "Spam",
     }
+    
     return folders.get(folder_number, "Unknown")
 def string_parser(response:str):
     email = ''
     From = ''
     Subject = ''
     Content = ''
-    if('boundary' not in response[:1000]):
+    
+    if('boundary' not in response[:50]):
         boundary = '\r\n\r\n'
     else:
         boundary = '--'+response.split('boundary="')[1].split('"\r\n')[0]
+    
     part = response.split(boundary)
     header = part[0].splitlines()
     body = part[1].splitlines()
+
     for line in header:
         if("Date:" in line ):
             email+=line+'\n'
@@ -159,14 +163,22 @@ def string_parser(response:str):
         if("Subject" in line):
             email += line+'\n'
             Subject += line 
+    
     email+=('Body:\n')
+    
+    if part[1] == '\r\n.\r\n':
+        email += '\n.'
+        return email, From, Subject, Content
+
     if(boundary == '\r\n\r\n'):
         start=0
     else:
         start=4
+    
     for line in body[start:]:
         email+=line+'\n'
         Content += line
+    
     if 'Content-Type' in part[2]:
         email += "File:\n"
         atts = []
@@ -180,9 +192,13 @@ def string_parser(response:str):
             for line in att[5:]:
                 filedata += line 
             email+=f'\n{filename}\n{filedata}\n'
+    
     email+='\n.'
+    
     return email, From, Subject, Content
+
 def filter(From:str, Subject:str, Content:str) -> str:
+    
     with open('SocketProgramming/config.json', 'r') as fin:
         config = json.load(fin)
         

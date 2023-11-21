@@ -6,7 +6,7 @@ import re
 import time
 
 def SendMail():
-    config_file = 'config.json'
+    config_file = 'SocketProgramming/config.json'
     config : dict
     HOST : str
     PORT : int

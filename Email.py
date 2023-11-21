@@ -41,7 +41,7 @@ class Email:
         
     
     def Input(self):             
-        with open('config.json', 'r') as fi:
+        with open('SocketProgramming/config.json', 'r') as fi:
             config = json.load(fi)
             usermail = config['General']['usermail']
             username = config['General']['username']
