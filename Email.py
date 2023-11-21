@@ -134,19 +134,16 @@ class Email:
         #body parts
         if (len(self.MIME_Parts) == 1):
             result.write(self.MIME_Parts[0].Headers + b'\r\n')
-            for i in re.split(b'\r\n', self.MIME_Parts[0].Content):
-                if (i != b'') :
-                    result.write(i + b'\r\n')
+            result.write(self.MIME_Parts[0].Content + b'\r\n')
         else:         
             result.write(b'\r\n--' + self.Boundary + b'\r\n')
             result.write(self.MIME_Parts[0].Headers + b'\r\n')
-            for i in re.split(b'\r\n', self.MIME_Parts[0].Content):
-                result.write(i + b'\r\n')
+            result.write(self.MIME_Parts[0].Content + b'\r\n')
             
-            for i in range(1, len(self.MIME_Parts)):
+            for attachment in self.MIME_Parts[1:]:
                 result.write(b'--' + self.Boundary + b'\r\n')
-                result.write(self.MIME_Parts[i].Headers + b'\r\n')
-                data = self.MIME_Parts[i].Content
+                result.write(attachment.Headers + b'\r\n')
+                data = attachment.Content
                 
                 start = 0
                 while (start < len(data)):
