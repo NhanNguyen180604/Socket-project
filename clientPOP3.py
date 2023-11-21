@@ -3,6 +3,8 @@ import base64
 import os
 import json
 from email.header import decode_header
+import mysql.connector
+import io
 
 def GetMessage():
     config_file = "config.json"
@@ -20,6 +22,7 @@ def GetMessage():
         FORMAT = config['General']['FORMAT']
         usermail = config['General']['usermail']
         password = config['General']['password']
+        db_name = config['General']['Database']
         
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientsocket:
         clientsocket.connect((HOST, PORT))
@@ -39,89 +42,126 @@ def GetMessage():
         msg = "STAT\r\n"
         clientsocket.sendall(msg.encode(FORMAT))
         response = clientsocket.recv(1024).decode(FORMAT)
-        nEmail = int(response.split()[1])
+
         msg = "LIST\r\n"
         clientsocket.sendall(msg.encode(FORMAT))
         clientsocket.recv(1024)
         msg = "UIDL\r\n"
         clientsocket.sendall(msg.encode(FORMAT))
+        
         response = clientsocket.recv(1024).decode(FORMAT)
         response = response.split('\r\n')[1:-2]
-        uidlList = []
-        for line in response:
-            uidlList.append(line.split()[1])
-        while nEmail > 0:
-            print(f"Email: {nEmail}")
-            msg = f"RETR {nEmail}\r\n"
-            clientsocket.sendall(msg.encode(FORMAT))
-            response = ''
-            while True:
-                chunk = clientsocket.recv(10000).decode(FORMAT)
-                if not chunk:
-                    break
-                response += chunk
-                if '\r\n.\r\n' in chunk:
-                    break
-            response = response.split('\r\n', 1)[1]
-            filecontent, From, Subject, Content = string_parser(response)
-            folder = filter(From, Subject, Content)
-            filepath = os.path.join(os.getcwd(),folder,uidlList[nEmail-1])
-            os.makedirs(os.path.dirname(filepath),exist_ok=True)
-            with open(filepath, 'w') as fi:
-                fi.write(filecontent)
-            nEmail -= 1
+        
+        uidlList = [line[:-4] for line in response] # format of each line is '{number} {UIDL}'
+        
+        db_user = os.environ.get('DB_USER')
+        db_password = os.environ.get('DB_PASSWORD')
+        
+        with mysql.connector.connect(host=HOST, user=db_user, password=db_password, database=db_name) as db:
+            cursor = db.cursor()
+            cursor.execute('SELECT No, UIDL from email')
+            db_UIDL = [f'{i[0]} {i[1]}' for i in cursor.fetchall()]
+            
+            new_UIDL = [x for x in uidlList if x not in db_UIDL]
+            
+            for new_mail in new_UIDL:
+                msg = f"RETR {new_mail.split()[0]}\r\n"
+                clientsocket.sendall(msg.encode(FORMAT))
+                response = io.StringIO()
+                
+                while True:
+                    chunk = clientsocket.recv(10000).decode(FORMAT)
+                    if not chunk:
+                        break
+                    response.write(chunk)
+                    if '\r\n.\r\n' in chunk[-1000:]:
+                        break
+                    
+                response = response.getvalue().split('\r\n', 1)[1]
+                filecontent, From, Subject, Content = string_parser(response)
+                folder = filter(From, Subject, Content)
+                filepath = os.path.join(os.getcwd(), folder, new_mail.split()[1] + '.msg')
+                
+                os.makedirs(os.path.dirname(filepath),exist_ok=True)
+                with open(filepath, 'w') as fi:
+                    fi.write(filecontent)
+                    
+                # insert row into database
+                command = 'INSERT INTO email VALUES (%s, %s, %s, %s, %s, %s)'
+                val = (int(new_mail.split()[0]), new_mail.split()[1], From, Subject.split()[1], folder, 0)
+                cursor.execute(command, val)
+                db.commit() # save changes
+             
         msg = "QUIT\r\n"
         clientsocket.sendall(msg.encode(FORMAT))
 
 def CheckMail():
-    print("Here is the list of folders in your mailbox:")
-    print("1. Inbox")
-    print("2. College")
-    print("3. Important")
-    print("4. Spam")
-    choice = input("Choose the folder: ")
-    if choice == "":
-        print("Exit")
-    elif choice in ["1", "2", "3", "4"]:
-        folder_name = get_folder_name(int(choice))
+    config_file = 'config.json'
+    with open(config_file, 'r') as fi:
+        config = json.load(fi)
+        HOST = config['General']['MailServer']
+        db_name = config['General']['Database']
+        
+    while True:
+        print("Here is the list of folders in your mailbox:")
+        print("1. Inbox")
+        print("2. College")
+        print("3. Important")
+        print("4. Spam")
+        choice = input("Choose the folder (press anything else to quit): ")
+        
+        if (choice < "1" or choice > "4"):
+            print('Quit')
+            return
+
+        folder_name = get_folder_name(int(choice))          
+         
         print(f"Folder: {folder_name}")
-        folderpath = os.path.join(os.getcwd(),folder_name)
+        folderpath = os.path.join(os.getcwd(), folder_name)
         if not os.path.exists(folderpath):
             print("This file doesn't exist")
             return
-        files = os.listdir(folderpath)
-        filecontent = []
-        for i,file in enumerate(files,1):
-            with open(os.path.join(folderpath, file), 'r') as fi:
-                From = ''
-                Subject =''
-                for line in fi:
-                    if("From: "in line):
-                        From += line.split('\n')[0]
-                    if("Subject: " in line):
-                        Subject += line.split('\n')[0]
-                        break
-            print(f"{i}. {From} | {Subject}")
-        email_read=int(input("Choose the email: "))
-        if email_read < 0 or email_read > i:
-            print('Invalid value')
-            return
-        with open(os.path.join(folderpath, files[email_read-1]), 'r') as fi:
-            filecontent = fi.read()
-            section = filecontent.split('\n\n')
-            print(section[0])
-            if section[1] == 'File:':
-                ans = input('Do you want to download attached file?:')
-                if ans == 'Y' or ans == 'y':
-                    for file in section[2:-1]:
-                        filename = file.split('\n',1)[0]
-                        filedata = file.split('\n',1)[1]
-                        filepath = os.path.join(os.getcwd(),'Attachment',filename)
-                        os.makedirs(os.path.dirname(filepath),exist_ok=True)
-                        with open(filepath, 'wb') as fi:
-                            fi.write(base64.b64decode(filedata))
-    else:
-        print("Invalid value, choose from 1-5")        
+        
+        db_user = os.environ.get('DB_USER')
+        db_password = os.environ.get('DB_PASSWORD')
+        with mysql.connector.connect(host=HOST, user=db_user, password=db_password, database=db_name) as db: 
+            command = 'SELECT * FROM email WHERE Folder = "' + folder_name + '"'
+            cursor = db.cursor()
+            cursor.execute(command)
+            files = cursor.fetchall()
+            
+            msg = '| {:<5} || {:<10} || {:30} || {} |'
+            print(msg.format('No', '', 'From', 'Subject'))
+            for i, file in enumerate(files, start=1):
+                if (file[5] == False):
+                    print(msg.format(i, '(Unread)', f'<{file[2]}>', file[3]))
+                else:
+                    print(msg.format(i, '', f'<{file[2]}>', file[3]))
+            
+            while ((mail_choice := (input(f'Choose email to read (1 - {i}), type "q" to quit: '))) != 'q'):
+                mail_choice = int(mail_choice)
+                if (mail_choice < 1 or mail_choice > i):
+                    print('Invalid choice')
+                else:
+                    command = 'UPDATE email SET IsRead = TRUE WHERE UIDL = "' + files[mail_choice - 1][1] + '"'
+                    cursor.execute(command)
+                    db.commit()  # save changes
+                    
+                    with open(os.path.join(folderpath, files[mail_choice - 1][1] + '.msg'), 'r') as fi:
+                        filecontent = fi.read()
+                        section = filecontent.split('\n\n')
+                        print(section[0])
+                        if section[1] == 'File:':
+                            ans = input('Do you want to download attached file?:')
+                            if ans == 'Y' or ans == 'y':
+                                for file in section[2:-1]:
+                                    filename = file.split('\n',1)[0]
+                                    filedata = file.split('\n',1)[1]
+                                    filepath = os.path.join(os.getcwd(), 'Attachment', filename)
+                                    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+                                    with open(filepath, 'wb') as fi:
+                                        fi.write(base64.b64decode(filedata))   
+                                        
             
 def get_folder_name(folder_number):
     folders = {
@@ -130,14 +170,13 @@ def get_folder_name(folder_number):
         3: "Important",
         4: "Spam",
     }
-    
     return folders.get(folder_number, "Unknown")
 
 def string_parser(response:str):
-    email = ''
-    From = ''
-    Subject = ''
-    Content = ''
+    email = io.StringIO()
+    From = io.StringIO()
+    Subject = io.StringIO()
+    Content = io.StringIO()
     
     if('boundary' not in response[:50]):
         boundary = '\r\n\r\n'
@@ -150,50 +189,49 @@ def string_parser(response:str):
 
     for line in header:
         if("Date:" in line ):
-            email+=line+'\n'
+            email.write(line + '\n')
         if("From" in line):
             fromLine = line.split()
-            decoded = decode_header (fromLine[1]) [0][0].decode (decode_header (fromLine[1]) [0][1])
-            email+=fromLine[0]+' '+decoded+fromLine[2]+'\n'
-            From += fromLine[2][1:-1]
+            decoded = decode_header (fromLine[1])[0][0].decode(decode_header(fromLine[1])[0][1])
+            email.write(fromLine[0] + ' ' + decoded + fromLine[2] + '\n')
+            From.write(fromLine[2][1:-1])
         if("To:" in line or "Cc:" in line or "Bcc:" in line):
-            email+=line+'\n'
+            email.write(line + '\n')
         if("Subject" in line):
-            email += line+'\n'
-            Subject += line 
+            email.write(line + '\n')
+            Subject.write(line) 
     
-    email+=('Body:\n')
+    email.write('Body:\n')
     
     if part[1] == '\r\n.\r\n':
-        email += '\n.'
-        return email, From, Subject, Content
+        email.write('\n.')
+        return email.getvalue(), From.getvalue(), Subject.getvalue(), Content.getvalue()
 
     if(boundary == '\r\n\r\n'):
-        start=0
+        start = 0
     else:
-        start=4
+        start = 4
     
     for line in body[start:]:
-        email+=line+'\n'
-        Content += line
+        email.write(line + '\n')
+        Content.write(line)
     
     if 'Content-Type' in part[2]:
-        email += "File:\n"
+        email.write("File:\n")
         atts = []
-        filedata = ""
         atts.append(part[2].splitlines())
         for bruh in part[3:-1]:
             atts.append(bruh.splitlines())
         for att in atts: 
             filename = att[3].split('=')[1].strip('" ')
-            filedata = ''
+            filedata = io.StringIO()
             for line in att[5:]:
-                filedata += line 
-            email+=f'\n{filename}\n{filedata}\n'
+                filedata.write(line) 
+            email.write(f'\n{filename}\n{filedata.getvalue()}\n')
     
-    email+='\n.'
+    email.write('\n.')
     
-    return email, From, Subject, Content
+    return email.getvalue(), From.getvalue(), Subject.getvalue(), Content.getvalue()
 
 def filter(From:str, Subject:str, Content:str) -> str:
     
