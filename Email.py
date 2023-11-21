@@ -57,7 +57,7 @@ class Email:
         user_input['To'] = input('To: ').encode('utf-8')
         user_input['Cc'] = input('Cc: ').encode('utf-8')
         user_input['Bcc'] = input('Bcc: ').encode('utf-8')   
-        user_input['Subject'] = input('Subject: ').encode('utf-8')
+        user_input['Subject'] = input('Subject (max 100 letters): ').encode('utf-8')[:100]
         
         user_input['MIME_Parts'] = []
         print(f'Body (each line should not exceed {LINE_LENGTH} letters):')
@@ -210,9 +210,11 @@ class Email:
             self.Subject = (headers[b'Subject'] if (b'Subject' in headers) else b'')
             
             # get headers
+            headers = io.BytesIO()
             for line in data.split(b'\r\n', 8)[5:7]:
-                self.MIME_Parts[0].Headers += line + b'\r\n'
-                
+                headers.write(line + b'\r\n')
+            self.MIME_Parts[0].Headers = headers.getvalue()
+            
             # get body
             self.MIME_Parts[0].Content = data.split(b'\r\n\r\n', 1)[1][:-2]
             
@@ -235,16 +237,20 @@ class Email:
 
             # get body
             body = data_part[1]
+            headers = io.BytesIO()
             for line in body.split(b'\r\n', 3)[0:2]:
-                self.MIME_Parts[0].Headers += line + b'\r\n'
+                headers.write(line + b'\r\n')
+            self.MIME_Parts[0].Headers = headers.getvalue()
                 
             self.MIME_Parts[0].Content = body.split(b'\r\n\r\n', 1)[1][:-2]  # use slice to remove the last \r\n
             
             # get attachment
             for i in range(2, len(data_part) - 1):
                 self.MIME_Parts.append(MyMIME())
+                headers = io.BytesIO()
                 for line in data_part[i].split(b'\r\n', 4)[0:3]:
-                    self.MIME_Parts[i - 1].Headers += line + b'\r\n'
+                    headers.write(line + b'\r\n')
+                self.MIME_Parts[i - 1].Headers = headers.getvalue()
                     
                 self.MIME_Parts[i - 1].Content = data_part[i].split(b'\r\n\r\n', 1)[1]
                 self.MIME_Parts[i - 1].Content = self.MIME_Parts[i - 1].Content.replace(b'\r\n', b'')

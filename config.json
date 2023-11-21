@@ -7,16 +7,18 @@
         "FORMAT": "utf-8",
         "SMTP": 9696,
         "POP3": 6969,
-        "Autoload": 10
+        "Autoload": 10,
+        "Database": "mydb"
     },
     "Filter": {
         "Subject": {
             "Important": [
                 "urgent",
-                "ASAP",
+                "asap",
                 "emergency"
             ],
             "College": [
+                "gpa",
                 "school fee",
                 "change class room"
             ],
@@ -29,7 +31,7 @@
         "Content": {
             "College": [
                 "project",
-                "GPA",
+                "gpa",
                 "exam"
             ],
             "Spam": [
