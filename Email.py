@@ -8,7 +8,6 @@ import re
 import json
 import io
 
-LINE_LENGTH = 76
 MIME_VERSION = 'MIME-Version: 1.0'
 BUFFER_SIZE = 10000
 
@@ -60,7 +59,7 @@ class Email:
         user_input['Subject'] = input('Subject (max 100 letters): ').encode('utf-8')[:100]
         
         user_input['MIME_Parts'] = []
-        print(f'Body (each line should not exceed {LINE_LENGTH} letters):')
+        print(f'Body:')
         user_input['MIME_Parts'].append(MyMIME())
         user_input['MIME_Parts'][0].create_body_headers()
         
@@ -68,7 +67,7 @@ class Email:
             line = input()
             if (line == ''):
                 break
-            line = line[:LINE_LENGTH] + '\r\n'
+            line = line[:BUFFER_SIZE] + '\r\n'
             user_input['MIME_Parts'][0].Content += line.encode('utf-8')
     
         if (input('Do you want to send attachment (Y/N): ') == 'Y'):

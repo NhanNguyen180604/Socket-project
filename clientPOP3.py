@@ -88,7 +88,7 @@ def GetMessage():
                     
                 # insert row into database
                 command = 'INSERT INTO email VALUES (%s, %s, %s, %s, %s, %s)'
-                val = (int(new_mail.split()[0]), new_mail.split()[1], From, Subject.split()[1], folder, 0)
+                val = (int(new_mail.split()[0]), new_mail.split()[1], From, Subject.split(maxsplit=1)[1], folder, 0)
                 cursor.execute(command, val)
                 db.commit() # save changes
              
@@ -125,22 +125,26 @@ def CheckMail():
         db_user = os.environ.get('DB_USER')
         db_password = os.environ.get('DB_PASSWORD')
         with mysql.connector.connect(host=HOST, user=db_user, password=db_password, database=db_name) as db: 
-            command = 'SELECT * FROM email WHERE Folder = "' + folder_name + '"'
-            cursor = db.cursor()
-            cursor.execute(command)
-            files = cursor.fetchall()
+            while True:
+                command = 'SELECT * FROM email WHERE Folder = "' + folder_name + '"'
+                cursor = db.cursor()
+                cursor.execute(command)
+                files = cursor.fetchall()
             
-            msg = '| {:<5} || {:<10} || {:30} || {:100} |'
-            print(msg.format('No', '', 'From', 'Subject'))
-            for i, file in enumerate(files, start=1):
-                if (file[5] == False):
-                    print(msg.format(i, '(Unread)', f'<{file[2]}>', file[3]))
-                else:
-                    print(msg.format(i, '', f'<{file[2]}>', file[3]))
-            
-            while ((mail_choice := (input(f'Choose email to read (1 - {i}), type "q" to quit: '))) != 'q'):
+                msg = '{:<5} || {:<10} || {:<30} || {:<100}'
+                print(msg.format('No', '', 'From', 'Subject'))
+                for i, file in enumerate(files, start=1):
+                    if (file[5] == False):
+                        print(msg.format(i, '(Unread)', f'<{file[2]}>', file[3]))
+                    else:
+                        print(msg.format(i, '', f'<{file[2]}>', file[3]))
+                                
+                mail_choice = input(f'Choose email to read (1 - {i}), type "q" to quit: ')
+                if mail_choice == 'q' or mail_choice == 'Q':
+                    break
+                
                 mail_choice = int(mail_choice)
-                if (mail_choice < 1 or mail_choice > i):
+                if mail_choice < 1 or mail_choice > i:
                     print('Invalid choice')
                 else:
                     command = 'UPDATE email SET IsRead = TRUE WHERE UIDL = "' + files[mail_choice - 1][1] + '"'
@@ -152,7 +156,7 @@ def CheckMail():
                         section = filecontent.split('\n\n')
                         print(section[0])
                         if section[1] == 'File:':
-                            ans = input('Do you want to download attached file?:')
+                            ans = input('Do you want to download attached file?: ')
                             if ans == 'Y' or ans == 'y':
                                 for file in section[2:-1]:
                                     filename = file.split('\n',1)[0]
@@ -162,7 +166,6 @@ def CheckMail():
                                     with open(filepath, 'wb') as fi:
                                         fi.write(base64.b64decode(filedata))   
                                         
-            
 def get_folder_name(folder_number):
     folders = {
         1: "Inbox",
