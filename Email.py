@@ -19,7 +19,7 @@ class MyMIME:
     def create_body_headers(self):
         Content_type = f'Content-Type: text/plain'
         charset = 'charset="utf-8"'
-        Content_transfer_encoding = 'Content-Transfer-Encoding: 8bit'
+        Content_transfer_encoding = 'Content-Transfer-Encoding: 7bit'
         self.Headers = (f'{Content_type}; {charset}\r\n{Content_transfer_encoding}\r\n').encode('utf-8')
         
     def create_attachment_headers(self, mime_type : str, file_name : str):
