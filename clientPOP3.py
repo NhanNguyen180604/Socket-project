@@ -151,20 +151,16 @@ def CheckMail():
                     cursor.execute(command)
                     db.commit()  # save changes
                     
-                    with open(os.path.join(folderpath, files[mail_choice - 1][1] + '.msg'), 'r') as fi:
-                        filecontent = fi.read()
-                        section = filecontent.split('\n\n')
-                        print(section[0])
-                        if section[1] == 'File:':
-                            ans = input('Do you want to download attached file?: ')
-                            if ans == 'Y' or ans == 'y':
-                                for file in section[2:-1]:
-                                    filename = file.split('\n',1)[0]
-                                    filedata = file.split('\n',1)[1]
-                                    filepath = os.path.join(os.getcwd(), 'Attachment', filename)
-                                    os.makedirs(os.path.dirname(filepath), exist_ok=True)
-                                    with open(filepath, 'wb') as fi:
-                                        fi.write(base64.b64decode(filedata))   
+                    mail_dict, header, body = ReadFile(folderpath, files, mail_choice)
+                    print(header + '\n\n' + body)  
+                    if 'File' in mail_dict:
+                        ans = input('Do you want to download attached file?: ')
+                        if ans == 'Y' or ans == 'y':
+                            for att in mail_dict['File']:    
+                                filepath = os.path.join(os.getcwd(), 'Attachment', att[0])
+                                os.makedirs(os.path.dirname(filepath), exist_ok=True)
+                                with open(filepath, 'wb') as fi:
+                                    fi.write(base64.b64decode(att[1]))
                                         
 def get_folder_name(folder_number):
     folders = {
@@ -204,10 +200,10 @@ def string_parser(response:str):
             email.write(line + '\n')
             Subject.write(line) 
     
-    email.write('Body:\n')
+    email.write('Body:')
     
     if part[1] == '\r\n.\r\n':
-        email.write('\n.')
+        email.write('\n\n.')
         return email.getvalue(), From.getvalue(), Subject.getvalue(), Content.getvalue()
 
     if(boundary == '\r\n\r\n'):
@@ -220,7 +216,7 @@ def string_parser(response:str):
         Content.write(line)
     
     if 'Content-Type' in part[2]:
-        email.write("File:\n")
+        email.write("\nFile:")
         atts = []
         atts.append(part[2].splitlines())
         for bruh in part[3:-1]:
@@ -230,11 +226,37 @@ def string_parser(response:str):
             filedata = io.StringIO()
             for line in att[5:]:
                 filedata.write(line) 
-            email.write(f'\n{filename}\n{filedata.getvalue()}\n')
+            email.write(f'\n\n{filename}\n{filedata.getvalue()}')
     
-    email.write('\n.')
+    email.write('\n\n.')
     
     return email.getvalue(), From.getvalue(), Subject.getvalue(), Content.getvalue()
+
+def ReadFile(folderpath, files, mail_choice):
+    with open(os.path.join(folderpath, files[mail_choice - 1][1] + '.msg'), 'r') as fi:
+        filecontent = fi.read()
+        section = filecontent.split('\n\n')
+        mail_dict = {}
+        header = section[0].split('\nBody:', 1)[0]
+        body = section[0].split('\nBody:', 1)[1]
+        
+        for line in header.splitlines():
+            if('From' in line):
+                mail_dict['From'] = line.split('<', 1)[0].split(' ', maxsplit=1)[1]
+                mail_dict['MailFrom'] = line.split('<', 1)[1].split('>',1)[0]
+            else:
+                part = line.split(':', 1)
+                mail_dict[part[0]] = part[1].strip()
+        if body:
+            mail_dict['Body'] = body
+            
+        if 'File:' in section[1]:
+            mail_dict['File'] = []
+            for file in section[2:-1]:
+                filename = file.split('\n',1)[0]
+                filedata = file.split('\n',1)[1]
+                mail_dict['File'].append((filename, filedata))                  
+    return mail_dict, header, body         
 
 def filter(From:str, Subject:str, Content:str) -> str:
     
