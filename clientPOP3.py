@@ -155,7 +155,7 @@ def CheckMail():
                     cursor.execute(command)
                     db.commit()  # save changes
                     
-                    mail_dict, header, body = ReadFile(folderpath, files, mail_choice)
+                    mail_dict, header, body = ReadFile(folderpath, files[mail_choice - 1][1])
                     print(header + '\n\n' + body)  
                     if 'File' in mail_dict:
                         ans = input('Do you want to download attached file?: ')
@@ -236,8 +236,8 @@ def string_parser(response:str):
     
     return email.getvalue(), From.getvalue(), Subject.getvalue(), Content.getvalue()
 
-def ReadFile(folderpath, files, mail_choice):
-    with open(os.path.join(folderpath, files[mail_choice - 1][1] + '.msg'), 'r') as fi:
+def ReadFile(folderpath, uidl):
+    with open(os.path.join(folderpath, uidl + '.msg'), 'r') as fi:
         filecontent = fi.read()
         section = filecontent.split('\n\n')
         mail_dict = {}
