@@ -4,30 +4,23 @@ import base64
 import json
 import re
 
-def SendMail():
+def send_mail_util():
+    email = Email.Email()
+    
+    #input Email content
+    email.Input()
+    send_mail(email)
+
+def send_mail(email: Email.Email):
+    mail_content = email.As_Byte()
+    
     config_file = 'config.json'
-    config : dict
-    HOST : str
-    PORT : int
-    usermail : str
-    username : str
 
     with open(config_file, 'r') as fi:
         config = json.load(fi)
         HOST = config['General']['MailServer']
         PORT = config['General']['SMTP']
         usermail = config['General']['usermail']
-        username = config['General']['username']
-
-    username = username.encode('utf-8')
-    username = base64.b64encode(username).decode('utf-8')
-    username = f'=?UTF-8?B?{username}?='
-        
-    email = Email.Email()
-    
-    #input Email content
-    email.Input()
-    mail_content = email.As_Byte()
     
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
         #initialize TCP connection

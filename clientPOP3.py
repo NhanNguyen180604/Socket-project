@@ -119,7 +119,7 @@ def CheckMail():
         print(f"Folder: {folder_name}")
         folderpath = os.path.join(os.getcwd(), folder_name)
         if not os.path.exists(folderpath):
-            print("This file doesn't exist")
+            print("This folder doesn't exist")
             return
         
         db_user = os.environ.get('DB_USER')
@@ -130,6 +130,10 @@ def CheckMail():
                 cursor = db.cursor()
                 cursor.execute(command)
                 files = cursor.fetchall()
+                
+                if (len(files) == 0):
+                    print('This folder is empty')
+                    break
             
                 msg = '{:<5} || {:<10} || {:<30} || {:<100}'
                 print(msg.format('No', '', 'From', 'Subject'))

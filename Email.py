@@ -106,6 +106,40 @@ class Email:
         self.Subject = fields['Subject']
         for i in fields['MIME_Parts']:
             self.MIME_Parts.append(i)
+            
+    def Input_By_String(self, To: str, Cc: str, Bcc: str, Subject: str, body: str, files_paths: list):
+        with open('config.json', 'r') as config_file:
+            config = json.load(config_file)
+            username = config['General']['username']
+            usermail = config['General']['usermail']
+            FORMAT = config['General']['FORMAT']
+        
+        username = username.encode(FORMAT)
+        username = base64.b64encode(username).decode(FORMAT)
+        username = f'=?UTF-8?B?{username}?='
+        
+        self.Date = time.ctime(time.time())
+        self.From = f'{username} <{usermail}>'.encode(FORMAT)
+        self.To = To.encode(FORMAT)
+        self.Cc = Cc.encode(FORMAT)
+        self.Bcc = Bcc.encode(FORMAT)   
+        self.Subject = Subject.encode(FORMAT)
+        
+        self.MIME_Parts.append(MyMIME())
+        self.MIME_Parts[0].create_body_headers()
+        self.MIME_Parts[0].Content = body
+        
+        for path in files_paths:             
+            mime_type = mimetypes.guess_type(path, strict=True)
+            file_name = os.path.basename(path)
+            
+            with open(path, 'rb') as fi:
+                data = fi.read()
+                data = base64.b64encode(data)
+                attachment = MyMIME()
+                attachment.create_attachment_headers(mime_type[0], file_name)
+                attachment.Content = data
+                self.MIME_Parts.append(attachment)
     
     def As_Byte(self) -> bytes:     
         result = io.BytesIO()

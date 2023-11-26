@@ -1,7 +1,13 @@
 import customtkinter as ctk
+from tkinter import filedialog
 import mysql.connector
 import os
+import Email
+import clientSMTP
+import clientPOP3
+import threading
 import json
+import time
 
 ctk.set_appearance_mode('dark')
 ctk.set_default_color_theme('blue')
@@ -131,6 +137,7 @@ class MailSendingWindow(ctk.CTkToplevel):
     def __init__(self, master):
         super().__init__(master)
         self.geometry('800x600')
+        self.title('Sending mail')
         self.minsize(width=600, height=400)
 
         # to widgets
@@ -162,9 +169,34 @@ class MailSendingWindow(ctk.CTkToplevel):
         self.textbox.insert('0.0', 'Type your body here')
         self.textbox.place(relx=0.5, rely=0.34, relwidth=0.9, relheight=0.5, anchor='n')
         
+        # attachment button
+        self.files_paths = []
+        self.att_button = ctk.CTkButton(self, text='Attach files', font=('Calibri', 16, 'bold'), corner_radius=20, 
+                                        command=self.get_files_paths)
+        self.att_button.place(relx=0.95, rely=0.9, relheight=0.07, anchor='ne')
+        
         # send button
-        self.send_button = ctk.CTkButton(self, text='Send', font=('Calibri', 16, 'bold'), corner_radius=20)
+        self.send_button = ctk.CTkButton(self, text='Send', font=('Calibri', 16, 'bold'), corner_radius=20, 
+                                         command=self.send_mail)
         self.send_button.place(relx=0.05, rely=0.9, relheight=0.07, anchor='nw')
+        
+    def get_files_paths(self):
+        self.files_paths += filedialog.askopenfilenames()
+        self.files_paths = [path for path in self.files_paths if (os.path.getsize(path) <= 3e+6)]
+        
+    def send_mail(self):
+        To = self.to_entry.get()
+        Cc = self.cc_entry.get()
+        Bcc = self.bcc_entry.get()   
+        Subject = self.subject_entry.get()[:100]
+        body = self.textbox.get('0.0', 'end')
+        body = body.replace('\n\n', '\n \n')
+        body = body.replace('\n', '\r\n').encode('utf-8')
+        
+        email = Email.Email()
+        email.Input_By_String(To, Cc, Bcc, Subject, body, self.files_paths)
+        clientSMTP.send_mail(email)
+        self.destroy()
     
 class MenuFrame(ctk.CTkFrame):
     def __init__(self, master, mail_list_frame: MailListFrame):
@@ -231,7 +263,20 @@ def get_sent_list():
         mail_list = my_cursor.fetchall()
     return mail_list
         
+def auto_load():
+    with open('config.json', 'r') as fin:
+        config = json.load(fin)
+        interval = config['General']['Autoload']
+    
+    while True:
+        get_message_thread = threading.Thread(target=clientPOP3.GetMessage)
+        get_message_thread.start()
+        get_message_thread.join()
+        time.sleep(interval)
+            
 def main():
+    auto_load_thread = threading.Thread(target=auto_load, daemon=True)
+    auto_load_thread.start()
     App(1200, 600)
 
 if __name__ == '__main__':

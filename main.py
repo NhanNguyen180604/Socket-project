@@ -28,7 +28,7 @@ def main():
         
         match choice:
             case 1:
-                clientSMTP.SendMail()
+                clientSMTP.send_mail_util()
             case 2:
                 clientPOP3.CheckMail()
             case 3:
