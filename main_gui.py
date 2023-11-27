@@ -8,9 +8,11 @@ import clientPOP3
 import threading
 import json
 import time
-import PIL
+from PIL import Image
 import base64
 import mimetypes
+
+WINDOW_WIDTH, WINDOW_HEIGHT = 1300, 600
 
 ctk.set_appearance_mode('dark')
 ctk.set_default_color_theme('blue')
@@ -21,12 +23,22 @@ class App(ctk.CTk):
         self.title('Fake mail client app')
         self.geometry(f'{width}x{height}+{int((self.winfo_screenwidth() - width) / 2)}+{int((self.winfo_screenheight() - height) / 2)}')
         self.minsize(800, 600)
+        self.protocol('WM_DELETE_WINDOW', self.close_window)
         
         self.mail_content_frame = MailContentFrame(self)
         self.mail_list_frame = MailListFrame(self, self.mail_content_frame)
         self.folder_frame = MenuFrame(self, self.mail_list_frame)
         
         self.mainloop()
+        
+    def close_window(self):
+        # self.delete_temp_files()
+        self.destroy()
+        
+    def delete_temp_files(self):
+        path = os.path.join(os.getcwd(), 'temp')
+        for file in os.listdir(path):
+            os.remove(os.path.join(path, file))
 
 class MailContentFrame(ctk.CTkFrame):
     def __init__(self, master):
@@ -98,13 +110,20 @@ class MailContentFrame(ctk.CTkFrame):
         for attachment in mail_dict.get('File'):
             self.create_attachment_frame(att_frame, attachment).pack(expand=True, fill='x', padx=20, pady=5)
             
-            # type = mimetypes.guess_type(attachment[0])[0]
-            # file_type = type.split('/')[0]
-            # if (file_type == 'image'):
-            #     # create temporary image file on disk
-            #     with open(os.path.join(os.getcwd(), 'temp/' + attachment[0]), 'wb') as temp:
-            #         file_data = attachment[1].encode('utf-8')
-            #         temp.write(base64.b64decode(file_data))
+            type = mimetypes.guess_type(attachment[0])[0]
+            file_type = type.split('/')[0]
+            if (file_type == 'image'):
+                # create temporary image file on disk
+                temp_file_path = os.path.join(os.getcwd(), 'temp')
+                temp_file_path = os.path.join(temp_file_path, attachment[0])
+                
+                if os.path.exists(temp_file_path) == False:
+                    with open(temp_file_path, 'wb') as temp:
+                        file_data = attachment[1].encode('utf-8')
+                        temp.write(base64.b64decode(file_data))
+                    
+                img_label = self.create_img_label_in_body(temp_file_path, body_frame, attachment[0])
+                img_label.pack(side='top', padx=20, pady=5, expand=True, fill='x')
 
     def create_attachment_frame(self, att_frame, attachment: tuple):
         # attachment frame
@@ -119,6 +138,16 @@ class MailContentFrame(ctk.CTkFrame):
                                         command=lambda: self.download_files(attachment))
         download_button.pack(side='right')
         return att_holder
+    
+    def create_img_label_in_body(self, img_path ,body_frame: ctk.CTkFrame, file_name):
+        img_original = Image.open(img_path)
+        img_ratio = img_original.size[0] / img_original.size[1]
+        img_ctk = ctk.CTkImage(light_image=img_original, dark_image=img_original)
+        img_ctk.configure(size=(WINDOW_WIDTH / 2, int(WINDOW_WIDTH/ (2 * img_ratio))))
+        
+        label = ctk.CTkLabel(body_frame, text=file_name, font=('Calibri', 16, 'bold'),
+                             image=img_ctk, compound='bottom')
+        return label
     
     def download_files(self, attachment):
         file_name = attachment[0]
@@ -148,6 +177,11 @@ class MailListFrame(ctk.CTkFrame):
                                   corner_radius=10)
         self.label.pack(side='top', fill='x', padx=5, pady=5)
         
+        # selected mail
+        self.selected_mail = None
+        self.selected_uidl = None
+        self.select_folder = 'Inbox'
+        
         # mail list frame
         self.mail_list_frame = ctk.CTkScrollableFrame(self, corner_radius=10)
         self.mail_list_frame.pack(side='top', fill='both', expand=True, padx=5, pady=5)
@@ -156,12 +190,13 @@ class MailListFrame(ctk.CTkFrame):
         
         # link to mail_content_frame
         self.mail_content_frame = mail_content_frame
-        
-        # selected mail
-        self.selected_mail = None
-        self.selected_uidl = None
                 
     def set_mail_list(self, folder_name):    
+        if folder_name != self.select_folder:
+            self.selected_mail = None
+            self.selected_uidl = None
+            self.select_folder = folder_name
+                        
         for mail_frame in self.mail_frame_list:
             mail_frame.destroy()
         self.mail_frame_list = []
@@ -429,9 +464,9 @@ def auto_load():
         time.sleep(interval)
             
 def main():
-    # auto_load_thread = threading.Thread(target=auto_load, daemon=True)
-    # auto_load_thread.start()
-    App(1200, 600)
+    auto_load_thread = threading.Thread(target=auto_load, daemon=True)
+    auto_load_thread.start()
+    App(WINDOW_WIDTH, WINDOW_HEIGHT)
 
 if __name__ == '__main__':
     main()
