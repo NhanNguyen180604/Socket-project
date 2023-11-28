@@ -14,12 +14,11 @@ import mimetypes
 
 WINDOW_WIDTH, WINDOW_HEIGHT = 1300, 600
 
-ctk.set_appearance_mode('dark')
-ctk.set_default_color_theme('blue')
+ctk.set_appearance_mode('light')
 
 class App(ctk.CTk):
     def __init__(self, width, height):
-        super().__init__()
+        super().__init__(fg_color=('#ECF4D6', '#161A30'))
         self.title('Fake mail client app')
         self.geometry(f'{width}x{height}+{int((self.winfo_screenwidth() - width) / 2)}+{int((self.winfo_screenheight() - height) / 2)}')
         self.minsize(800, 600)
@@ -42,54 +41,64 @@ class App(ctk.CTk):
 
 class MailContentFrame(ctk.CTkFrame):
     def __init__(self, master):
-        super().__init__(master)
-        self.configure(corner_radius=0)
+        super().__init__(master, corner_radius=0, fg_color=('#ECF4D6', '#161A30'))
         self.place(relx=0.5, y=0, relwidth=0.5, relheight=1)
         
         # display frame
-        self.display_frame = ctk.CTkFrame(self, corner_radius=0)
+        self.display_frame = ctk.CTkFrame(self, corner_radius=0, fg_color=('#ECF4D6', '#161A30'))
         self.display_frame.pack(expand=True, fill='both')
         
     def display_mail(self, uidl, folder):
         self.display_frame.destroy()
-        self.display_frame = ctk.CTkFrame(self, corner_radius=0)
+        self.display_frame = ctk.CTkFrame(self, corner_radius=0, fg_color=('#ECF4D6', '#161A30'))
         self.display_frame.pack(expand=True, fill='both')
 
         folderpath = os.path.join(os.getcwd(), folder)
         mail_dict = clientPOP3.ReadFile(folderpath, uidl)[0]
         
-        top_frame = ctk.CTkFrame(self.display_frame, corner_radius=0)
-        body_frame = ctk.CTkScrollableFrame(self.display_frame, corner_radius=0)
-        att_frame = ctk.CTkScrollableFrame(self.display_frame, corner_radius=0) if mail_dict.get('File', '') != '' else None
+        top_frame = ctk.CTkFrame(self.display_frame, corner_radius=0, 
+                                 fg_color=('#ECF4D6', '#161A30'))
+        body_frame = ctk.CTkScrollableFrame(self.display_frame, corner_radius=0, 
+                                            fg_color=('#ECF4D6', '#161A30'),
+                                            scrollbar_button_color=('#265073', '#31304D'),
+                                            scrollbar_button_hover_color=('#2D9596', '#B6BBC4'))
+        att_frame = ctk.CTkScrollableFrame(self.display_frame, corner_radius=0,
+                                           fg_color=('#ECF4D6', '#161A30'),
+                                           scrollbar_button_color=('#265073', '#31304D'),
+                                           scrollbar_button_hover_color=('#2D9596', '#B6BBC4')) if mail_dict.get('File', '') != '' else None
         
         top_frame.place(x=0, y=0, relwidth=1, relheight=0.25)
         
         # from 
         from_frame = ctk.CTkFrame(top_frame, fg_color='transparent')
         from_frame.pack(expand=True, fill='both', padx=20)
-        sender_label = ctk.CTkLabel(from_frame, text=f'From {mail_dict['From']} <{mail_dict['MailFrom']}>', 
-                                    font=('Calibri', 16), fg_color='transparent', anchor='w')
+        sender_label = ctk.CTkLabel(from_frame, text=f'From: {mail_dict['From']} <{mail_dict['MailFrom']}>', 
+                                    font=('Calibri', 16), fg_color='transparent', anchor='w', justify='left',
+                                    text_color=('black', '#F0ECE5'))
         sender_label.pack(expand=True, fill='x')
         
         # to
         to_frame = ctk.CTkFrame(top_frame, fg_color='transparent')
         to_frame.pack(expand=True, fill='both', padx=20)
         to_label = ctk.CTkLabel(to_frame, text=f'To: {mail_dict.get('To', '')}', anchor='w',
-                                font=('Calibri', 16), fg_color='transparent', justify='left')
+                                font=('Calibri', 16), fg_color='transparent', justify='left',
+                                text_color=('black', '#F0ECE5'))
         to_label.pack(expand=True, fill='x')
         
         # cc
         cc_frame = ctk.CTkFrame(top_frame, fg_color='transparent')
         cc_frame.pack(expand=True, fill='both', padx=20)
         cc_label = ctk.CTkLabel(cc_frame, text=f'Cc: {mail_dict.get('Cc', '')}', anchor='w',
-                                font=('Calibri', 16), fg_color='transparent', justify='left')
+                                font=('Calibri', 16), fg_color='transparent', justify='left',
+                                text_color=('black', '#F0ECE5'))
         cc_label.pack(expand=True, fill='x')
         
         # subject
         subject_frame = ctk.CTkFrame(top_frame, fg_color='transparent')
         subject_frame.pack(expand=True, fill='both', padx=20)
         subject_label = ctk.CTkLabel(subject_frame, text=mail_dict.get('Subject', ''), anchor='w',
-                                     font=('Calibri', 18, 'bold'), fg_color='transparent', justify='left')
+                                     font=('Calibri', 18, 'bold'), fg_color='transparent', justify='left',
+                                     text_color=('black', '#F0ECE5'))
         subject_label.pack(expand=True, fill='x')
         
         # body
@@ -100,8 +109,11 @@ class MailContentFrame(ctk.CTkFrame):
             body_frame.place(x=0, rely=0.26, relwidth=1, relheight=0.74, anchor='nw')
             
         body_label = ctk.CTkLabel(body_frame, text=mail_dict.get('Body', ''), anchor='w',
-                                  font=('Calibri', 16), fg_color='transparent', justify='left')
+                                  font=('Calibri', 16), fg_color='transparent', justify='left', 
+                                  text_color=('black', '#F0ECE5'))
         body_label.pack(expand=True, fill='x', padx=20, pady=20)
+        
+        self.display_frame.configure(fg_color=('#9AD0C2', '#31304D'))
         
         if mail_dict.get('File', '') == '':
             return
@@ -115,6 +127,7 @@ class MailContentFrame(ctk.CTkFrame):
             if (file_type == 'image'):
                 # create temporary image file on disk
                 temp_file_path = os.path.join(os.getcwd(), 'temp')
+                os.makedirs(temp_file_path, exist_ok=True)
                 temp_file_path = os.path.join(temp_file_path, attachment[0])
                 
                 if os.path.exists(temp_file_path) == False:
@@ -124,17 +137,20 @@ class MailContentFrame(ctk.CTkFrame):
                     
                 img_label = self.create_img_label_in_body(temp_file_path, body_frame, attachment[0])
                 img_label.pack(side='top', padx=20, pady=5, expand=True, fill='x')
-
+    
     def create_attachment_frame(self, att_frame, attachment: tuple):
         # attachment frame
-        att_holder = ctk.CTkFrame(att_frame)
+        att_holder = ctk.CTkFrame(att_frame, fg_color='transparent')
         
         # attachment name label
-        att_label = ctk.CTkLabel(att_holder, text=attachment[0], font=('Calibri', 14))
+        att_label = ctk.CTkLabel(att_holder, text=attachment[0], font=('Calibri', 14), 
+                                 fg_color='transparent', text_color=('black', '#F0ECE5'))
         att_label.pack(side='left')
 
         # download button
         download_button = ctk.CTkButton(att_holder, text='Download', font=('Calibri', 14, 'italic'), 
+                                        fg_color=('#ECF4D6', '#161A30'), text_color=('black', '#F0ECE5'),
+                                        hover_color=('#9AD0C2', '#31304D'),
                                         command=lambda: self.download_files(attachment))
         download_button.pack(side='right')
         return att_holder
@@ -158,24 +174,28 @@ class MailContentFrame(ctk.CTkFrame):
         
         path = filedialog.asksaveasfilename(initialfile=file_name, defaultextension=extension,
                                             filetypes=[(file_type, extension)])
+        if not path:
+            return
+        
         with open(path, 'wb') as downloaded_file:
             downloaded_file.write(base64.b64decode(file_data))
     
 class MailListFrame(ctk.CTkFrame):
     def __init__(self, master, mail_content_frame: MailContentFrame):
-        super().__init__(master)
-        self.configure(corner_radius=0)
+        super().__init__(master, corner_radius=0, fg_color=('#ECF4D6', '#161A30'))
         self.place(relx=0.2, y=0, relwidth=0.3, relheight=1)   
         
         # top label
-        self.top_frame = ctk.CTkFrame(self)
+        self.top_frame = ctk.CTkFrame(self, fg_color='transparent')
         self.top_frame.pack(side='top', fill='x', padx=5, pady=5)
         
         self.stringVar = ctk.StringVar()
         self.label = ctk.CTkLabel(self.top_frame, textvariable=self.stringVar, 
-                                  font=('Calibri', 18, 'bold'), justify='left',
+                                  fg_color=('#9AD0C2', '#31304D'), 
+                                  text_color=('#265073', '#F0ECE5'),
+                                  font=('Calibri', 18, 'bold'),
                                   corner_radius=10)
-        self.label.pack(side='top', fill='x', padx=5, pady=5)
+        self.label.pack(side='top', expand=True, fill='both')
         
         # selected mail
         self.selected_mail = None
@@ -183,7 +203,10 @@ class MailListFrame(ctk.CTkFrame):
         self.select_folder = 'Inbox'
         
         # mail list frame
-        self.mail_list_frame = ctk.CTkScrollableFrame(self, corner_radius=10)
+        self.mail_list_frame = ctk.CTkScrollableFrame(self, corner_radius=10,
+                                                      fg_color=('#9AD0C2', '#31304D'),
+                                                      scrollbar_button_color=('#265073', '#161A30'),
+                                                      scrollbar_button_hover_color=('#2D9596', '#B6BBC4'))
         self.mail_list_frame.pack(side='top', fill='both', expand=True, padx=5, pady=5)
         self.mail_frame_list = []
         self.set_mail_list('Inbox')
@@ -219,8 +242,10 @@ class MailListFrame(ctk.CTkFrame):
         
         # create widgets
         mail_frame = ctk.CTkFrame(self.mail_list_frame, corner_radius=0, fg_color='transparent')
-        from_label = ctk.CTkLabel(mail_frame, text=From, font=('Calibri', 14), anchor='w', fg_color='transparent')
-        subject_label = ctk.CTkLabel(mail_frame, text=Subject, font=('Calibri', 14), anchor='w', fg_color='transparent')
+        from_label = ctk.CTkLabel(mail_frame, text=From, font=('Calibri', 14), anchor='w', fg_color='transparent', 
+                                  text_color=('black', '#F0ECE5'))
+        subject_label = ctk.CTkLabel(mail_frame, text=Subject, font=('Calibri', 14), anchor='w', fg_color='transparent', 
+                                     text_color=('black', '#F0ECE5'))
         
         # style read or unread
         if IsRead == False:
@@ -229,9 +254,6 @@ class MailListFrame(ctk.CTkFrame):
         else:
             from_label.configure(font=('Calibri', 14))
             subject_label.configure(font=('Calibri', 14))
-            
-        from_label.configure(text_color='white')
-        subject_label.configure(text_color='white')
 
         # pack
         from_label.pack(side='top', expand=True, fill='x', padx=5)
@@ -267,7 +289,7 @@ class MailListFrame(ctk.CTkFrame):
         self.selected_uidl = uidl
         self.selected_mail = mail
         for i in self.selected_mail:
-            i.configure(fg_color='#20212e')
+            i.configure(fg_color=('#2D9596', '#0c0f1c'))
         
         self.mail_content_frame.display_mail(uidl, folder)
         mail[1].configure(font=('Calibri', 14))
@@ -282,62 +304,90 @@ class MailListFrame(ctk.CTkFrame):
             db.commit()
 
     def mail_hover(self, mail):
+        color = ('#238182', '#0c0f1c') if self.selected_mail == mail else ('#2D9596', '#161A30')
         for i in mail:
-            i.configure(fg_color='#12131a')
+            i.configure(fg_color=color)
             
     def mail_stop_hovering(self, mail):
-        color = '#20212e' if self.selected_mail == mail else 'transparent'
+        color = ('#238182', '#0c0f1c') if self.selected_mail == mail else 'transparent'
         for i in mail:
             i.configure(fg_color=color)
         
 class MailSendingWindow(ctk.CTkToplevel):
     def __init__(self, master):
-        super().__init__(master)
+        super().__init__(master, fg_color=('#ECF4D6', '#161A30'))
         self.geometry('800x600')
         self.title('Sending mail')
         self.minsize(width=600, height=400)
 
         # to widgets
         self.to_label = ctk.CTkLabel(self, text='To', font=('Calibri', 16, 'bold'), anchor='w')
-        self.to_entry = ctk.CTkEntry(self, font=('Calibri', 16), fg_color='#333333')
+        self.to_entry = ctk.CTkEntry(self, font=('Calibri', 16), 
+                                     fg_color=('#9AD0C2', '#31304D'),
+                                     text_color=('black', '#F0ECE5'), 
+                                     border_width=0)
         self.to_label.place(relx=0.05, rely=0.02, relwidth=0.05, relheight=0.07, anchor='nw')
         self.to_entry.place(relx=0.15, rely=0.02, relwidth=0.8, relheight=0.07, anchor='nw')
         
         # cc widgets
         self.cc_label = ctk.CTkLabel(self, text='Cc', font=('Calibri', 16, 'bold'), anchor='w')
-        self.cc_entry = ctk.CTkEntry(self, font=('Calibri', 16), fg_color='#333333')
+        self.cc_entry = ctk.CTkEntry(self, font=('Calibri', 16), 
+                                     fg_color=('#9AD0C2', '#31304D'),
+                                     text_color=('black', '#F0ECE5'), 
+                                     border_width=0)
         self.cc_label.place(relx=0.05, rely=0.1, relwidth=0.05, relheight=0.07, anchor='nw')
         self.cc_entry.place(relx=0.15, rely=0.1, relwidth=0.8, relheight=0.07, anchor='nw')
         
         # bcc widgets
         self.bcc_label = ctk.CTkLabel(self, text='Bcc', font=('Calibri', 16, 'bold'), anchor='w')
-        self.bcc_entry = ctk.CTkEntry(self, font=('Calibri', 16), fg_color='#333333')
+        self.bcc_entry = ctk.CTkEntry(self, font=('Calibri', 16), 
+                                      fg_color=('#9AD0C2', '#31304D'),
+                                      text_color=('black', '#F0ECE5'), 
+                                      border_width=0)
         self.bcc_label.place(relx=0.05, rely=0.18, relwidth=0.05, relheight=0.07, anchor='nw')
         self.bcc_entry.place(relx=0.15, rely=0.18, relwidth=0.8, relheight=0.07, anchor='nw')
         
         # subject widgets
         self.subject_label = ctk.CTkLabel(self, text='Subject', font=('Calibri', 16, 'bold'), anchor='w')
-        self.subject_entry = ctk.CTkEntry(self, font=('Calibri', 16), fg_color='#333333')
+        self.subject_entry = ctk.CTkEntry(self, font=('Calibri', 16), 
+                                          fg_color=('#9AD0C2', '#31304D'),
+                                          text_color=('black', '#F0ECE5'), 
+                                          border_width=0)
         self.subject_label.place(relx=0.05, rely=0.26, relwidth=0.1, relheight=0.07, anchor='nw')
         self.subject_entry.place(relx=0.15, rely=0.26, relwidth=0.8, relheight=0.07, anchor='nw')
         
         # content textbox
-        self.textbox = ctk.CTkTextbox(self, font=('Calibri', 16), fg_color='#333333')
+        self.textbox = ctk.CTkTextbox(self, font=('Calibri', 16), 
+                                      fg_color=('#9AD0C2', '#31304D'),
+                                      text_color=('black', '#F0ECE5'), 
+                                      border_width=0)
+                                     
         self.textbox.insert('0.0', 'Type your body here')
         self.textbox.place(relx=0.5, rely=0.34, relwidth=0.9, relheight=0.5, anchor='n')
         
         # attachment button
         self.files_paths = []
-        self.att_button = ctk.CTkButton(self, text='Attach files', font=('Calibri', 16, 'bold'), corner_radius=20, 
-                                        command=self.get_files_paths)
+        self.att_button = ctk.CTkButton(self, text='Attach files', font=('Calibri', 16, 'bold'), 
+                                        text_color=('black', '#F0ECE5'), corner_radius=15, 
+                                        command=self.get_files_paths, border_width=4,
+                                        border_color=('#9AD0C2', '#31304D'),
+                                        fg_color=('#ECF4D6', '#161A30'), 
+                                        hover_color=('#9AD0C2', '#31304D'))
         self.att_button.place(relx=0.95, rely=0.9, relheight=0.07, anchor='ne')
         
         # attachment display
-        self.att_list_frame = ctk.CTkScrollableFrame(self)
+        self.att_list_frame = ctk.CTkScrollableFrame(self, fg_color=('#ECF4D6', '#161A30'), border_width=4,
+                                                     border_color=('#9AD0C2', '#31304D'),
+                                                     scrollbar_button_color=('#265073', '#161A30'),
+                                                     scrollbar_button_hover_color=('#2D9596', '#B6BBC4'))
         
         # send button
-        self.send_button = ctk.CTkButton(self, text='Send', font=('Calibri', 16, 'bold'), corner_radius=20, 
-                                         command=self.send_mail)
+        self.send_button = ctk.CTkButton(self, text='Send', font=('Calibri', 16, 'bold'), 
+                                         text_color=('black', '#F0ECE5'), corner_radius=15, 
+                                         command=self.send_mail, border_width=4,
+                                         border_color=('#9AD0C2', '#31304D'),
+                                         fg_color=('#ECF4D6', '#161A30'), 
+                                         hover_color=('#9AD0C2', '#31304D'))
         self.send_button.place(relx=0.05, rely=0.9, relheight=0.07, anchor='nw')
         
     def get_files_paths(self):
@@ -374,59 +424,92 @@ class MailSendingWindow(ctk.CTkToplevel):
             
     def create_attachment_frame(self, path):
         # attachment frame
-        att_frame = ctk.CTkFrame(self.att_list_frame)
+        att_frame = ctk.CTkFrame(self.att_list_frame, fg_color='transparent')
         
         # attachment name label
         file_name = os.path.basename(path)
-        att_label = ctk.CTkLabel(att_frame, text=file_name, font=('Calibri', 14))
+        att_label = ctk.CTkLabel(att_frame, text=file_name, font=('Calibri', 14),
+                                 fg_color='transparent',
+                                 text_color=('black', '#F0ECE5'))
         att_label.pack(side='left')
         
         # cancel button
         cancel_button = ctk.CTkButton(att_frame, text='X', font=('Calibri', 16, 'bold'), width=10, 
-                                        fg_color='transparent', command=lambda: self.cancel_attachment(path, att_frame))
+                                      text_color=('#265073', '#F0ECE5'), 
+                                      fg_color='transparent',
+                                      hover_color=('#9AD0C2', '#31304D'),
+                                      command=lambda: self.cancel_attachment(path, att_frame))
         cancel_button.pack(side='right')
         return att_frame
     
 class MenuFrame(ctk.CTkFrame):
     def __init__(self, master, mail_list_frame: MailListFrame):
-        super().__init__(master)
-        self.configure(corner_radius=0)
+        super().__init__(master, corner_radius=0, fg_color=('#ECF4D6', '#161A30'), border_width=0)
         self.place(x=0, y=0, relwidth=0.2, relheight=1)
         self.mail_sending_window = None
-        self.add_widgets()
-        # self.configure(fg_color='#13161a')
+        self.selected_folder_button = None
         self.mail_list_frame = mail_list_frame
+        self.add_widgets()
         
     def add_widgets(self):
         new_message_button = ctk.CTkButton(self, text='Compose', font=('Calibri', 18, 'bold'),
+                                           fg_color='transparent', 
+                                           text_color=('#265073', '#F0ECE5'), 
+                                           hover_color=('#9AD0C2', '#31304D'),
+                                           border_color=('#9AD0C2', '#31304D'), border_width=3,
                                            corner_radius=20, command=self.create_send_mail_window)
         new_message_button.place(relx=0.5, rely=0.03, relwidth=0.8, relheight=0.07, anchor='n')
         
-        mail_folders_label =ctk.CTkLabel(self, text='Mail folders', font=('Calibri', 16, 'bold'))
+        mail_folders_label = ctk.CTkLabel(self, text='Mail folders', font=('Calibri', 16, 'bold'))
         mail_folders_label.place(relx=0.5, rely = 0.15, relwidth=0.7, relheight=0.05, anchor='n')
         
         #folder buttons
-        inbox_button = ctk.CTkButton(self, text='Inbox', 
-                                     fg_color='transparent', hover_color='#12131a', 
-                                     command=lambda: self.mail_list_frame.set_mail_list('Inbox'))
-        important_button = ctk.CTkButton(self, text='Important', 
-                                         fg_color='transparent', hover_color='#12131a', 
-                                         command=lambda: self.mail_list_frame.set_mail_list('Important'))
-        college_button = ctk.CTkButton(self, text='College', 
-                                         fg_color='transparent', hover_color='#12131a', 
-                                         command=lambda: self.mail_list_frame.set_mail_list('College'))
-        spam_button = ctk.CTkButton(self, text='Spam', 
-                                         fg_color='transparent', hover_color='#12131a', 
-                                         command=lambda: self.mail_list_frame.set_mail_list('Spam'))
-        # sent_button = ctk.CTkButton(self, text='Sent',
-        #                             fg_color='transparent', hover_color='#12131a', 
-        #                             command=lambda: self.mail_list_frame.set_mail_list('Sent'))
+        inbox_button = ctk.CTkButton(self, text='Inbox', font=('Calibri', 14, 'bold'),
+                                     text_color=('#265073', '#F0ECE5'),
+                                     fg_color='transparent', 
+                                     hover_color=('#9AD0C2', '#31304D'),
+                                     command=lambda: self.set_mail_list('Inbox', inbox_button))
+        important_button = ctk.CTkButton(self, text='Important', font=('Calibri', 14, 'bold'),
+                                         text_color=('#265073', '#F0ECE5'),
+                                         fg_color='transparent', 
+                                         hover_color=('#9AD0C2', '#31304D'), 
+                                         command=lambda: self.set_mail_list('Important', important_button))
+        college_button = ctk.CTkButton(self, text='College', font=('Calibri', 14, 'bold'),
+                                       text_color=('#265073', '#F0ECE5'),
+                                      fg_color='transparent', 
+                                      hover_color=('#9AD0C2', '#31304D'), 
+                                      command=lambda: self.set_mail_list('College', college_button))
+        spam_button = ctk.CTkButton(self, text='Spam', font=('Calibri', 14, 'bold'),
+                                    text_color=('#265073', '#F0ECE5'),
+                                    fg_color='transparent', 
+                                    hover_color=('#9AD0C2', '#31304D'), 
+                                    command=lambda: self.set_mail_list('Spam', spam_button))
+        # sent_button = ctk.CTkButton(self, text='Sent', font=('Calibri', 14, 'bold'),
+        #                             text_color=('#265073', '#F0ECE5'),
+        #                             fg_color='transparent', 
+        #                             hover_color=('#9AD0C2', '#31304D'), 
+        #                             command=lambda: self.set_mail_list('Sent', sent_button))
         
         inbox_button.place(relx=0.5, rely=0.2, relwidth=0.6, relheight=0.05, anchor='n')
-        important_button.place(relx=0.5, rely=0.25, relwidth=0.6, relheight=0.05, anchor='n')
-        college_button.place(relx=0.5, rely=0.3, relwidth=0.6, relheight=0.05, anchor='n')
-        spam_button.place(relx=0.5, rely=0.35, relwidth=0.6, relheight=0.05, anchor='n')
-        # sent_button.place(relx=0.5, rely=0.4, relwidth=0.6, relheight=0.05, anchor='n')
+        important_button.place(relx=0.5, rely=0.26, relwidth=0.6, relheight=0.05, anchor='n')
+        college_button.place(relx=0.5, rely=0.32, relwidth=0.6, relheight=0.05, anchor='n')
+        spam_button.place(relx=0.5, rely=0.38, relwidth=0.6, relheight=0.05, anchor='n')
+        # sent_button.place(relx=0.5, rely=0.42, relwidth=0.6, relheight=0.05, anchor='n')
+        
+        self.set_mail_list('Inbox', inbox_button)
+    
+    def set_mail_list(self, folder, button):
+        if (self.selected_folder_button == button):
+            return
+        
+        # change old folder button color
+        if self.selected_folder_button is not None:
+            self.selected_folder_button.configure(fg_color='transparent')
+        
+        # switch to new selected button
+        self.selected_folder_button = button
+        self.selected_folder_button.configure(fg_color=('#9AD0C2', '#31304D'))
+        self.mail_list_frame.set_mail_list(folder)
         
     def create_send_mail_window(self):
         if self.mail_sending_window is None or not self.mail_sending_window.winfo_exists():
