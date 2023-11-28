@@ -14,7 +14,7 @@ import mimetypes
 
 WINDOW_WIDTH, WINDOW_HEIGHT = 1300, 600
 
-ctk.set_appearance_mode('light')
+ctk.set_appearance_mode('system')
 
 class App(ctk.CTk):
     def __init__(self, width, height):
@@ -236,9 +236,9 @@ class MailListFrame(ctk.CTkFrame):
         
     def create_mail_frame(self, mail, folder):
         uidl = mail[0]
-        From = mail[1]
-        Subject = mail[2]
-        IsRead = mail[3]
+        From = 'Me' if folder == 'Sent' else mail[1]
+        Subject = mail[1] if folder == 'Sent' else mail[2]
+        IsRead = True if folder == 'Sent' else mail[3]
         
         # create widgets
         mail_frame = ctk.CTkFrame(self.mail_list_frame, corner_radius=0, fg_color='transparent')
@@ -484,17 +484,17 @@ class MenuFrame(ctk.CTkFrame):
                                     fg_color='transparent', 
                                     hover_color=('#9AD0C2', '#31304D'), 
                                     command=lambda: self.set_mail_list('Spam', spam_button))
-        # sent_button = ctk.CTkButton(self, text='Sent', font=('Calibri', 14, 'bold'),
-        #                             text_color=('#265073', '#F0ECE5'),
-        #                             fg_color='transparent', 
-        #                             hover_color=('#9AD0C2', '#31304D'), 
-        #                             command=lambda: self.set_mail_list('Sent', sent_button))
+        sent_button = ctk.CTkButton(self, text='Sent', font=('Calibri', 14, 'bold'),
+                                    text_color=('#265073', '#F0ECE5'),
+                                    fg_color='transparent', 
+                                    hover_color=('#9AD0C2', '#31304D'), 
+                                    command=lambda: self.set_mail_list('Sent', sent_button))
         
         inbox_button.place(relx=0.5, rely=0.2, relwidth=0.6, relheight=0.05, anchor='n')
         important_button.place(relx=0.5, rely=0.26, relwidth=0.6, relheight=0.05, anchor='n')
         college_button.place(relx=0.5, rely=0.32, relwidth=0.6, relheight=0.05, anchor='n')
         spam_button.place(relx=0.5, rely=0.38, relwidth=0.6, relheight=0.05, anchor='n')
-        # sent_button.place(relx=0.5, rely=0.42, relwidth=0.6, relheight=0.05, anchor='n')
+        sent_button.place(relx=0.5, rely=0.44, relwidth=0.6, relheight=0.05, anchor='n')
         
         self.set_mail_list('Inbox', inbox_button)
     
@@ -522,16 +522,11 @@ def get_mail_list(folder_name):
     db_pass = os.environ.get('DB_PASSWORD')
     with mysql.connector.connect(host='127.0.0.1', user=db_user, password=db_pass, database='mydb') as db:
         my_cursor = db.cursor()
-        my_cursor.execute(f'SELECT UIDL, SenderMail, Subject, IsRead FROM email WHERE Folder = "{folder_name}"')
-        mail_list = my_cursor.fetchall()
-    return mail_list
-
-def get_sent_list():
-    db_user = os.environ.get('DB_USER')
-    db_pass = os.environ.get('DB_PASSWORD')
-    with mysql.connector.connect(host='127.0.0.1', user=db_user, password=db_pass, database='mydb') as db:
-        my_cursor = db.cursor()
-        my_cursor.execute(f'SELECT UIDL, SUBJECT FROM sent')
+        if folder_name == 'Sent':
+            command = f'SELECT * FROM sent'
+        else:
+            command = f'SELECT UIDL, SenderMail, Subject, IsRead FROM email WHERE Folder = "{folder_name}"'
+        my_cursor.execute(command)
         mail_list = my_cursor.fetchall()
     return mail_list
         
