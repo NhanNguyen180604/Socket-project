@@ -22,7 +22,7 @@ def send_mail(email: Email.Email):
         config = json.load(fi)
         HOST = config['General']['MailServer']
         PORT = config['General']['SMTP']
-        usermail = config['General']['usermail']
+        usermail = config['Account']['usermail']
     
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
         #initialize TCP connection

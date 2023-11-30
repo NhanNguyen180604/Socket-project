@@ -19,7 +19,7 @@ class MyMIME:
     def create_body_headers(self):
         Content_type = f'Content-Type: text/plain'
         charset = 'charset="utf-8"'
-        Content_transfer_encoding = 'Content-Transfer-Encoding: 7bit'
+        Content_transfer_encoding = 'Content-Transfer-Encoding: base64'
         self.Headers = (f'{Content_type}; {charset}\r\n{Content_transfer_encoding}\r\n').encode('utf-8')
         
     def create_attachment_headers(self, mime_type : str, file_name : str):
@@ -42,8 +42,8 @@ class Email:
     def Input(self):             
         with open('config.json', 'r') as fi:
             config = json.load(fi)
-            usermail = config['General']['usermail']
-            username = config['General']['username']
+            usermail = config['Account']['usermail']
+            username = config['Account']['username']
             
         username = username.encode('utf-8')
         username = base64.b64encode(username).decode('utf-8')
@@ -56,7 +56,9 @@ class Email:
         user_input['To'] = input('To: ').encode('utf-8')
         user_input['Cc'] = input('Cc: ').encode('utf-8')
         user_input['Bcc'] = input('Bcc: ').encode('utf-8')   
-        user_input['Subject'] = input('Subject (max 100 letters): ').encode('utf-8')[:100]
+        subject = input('Subject (max 100 letters): ')[:100].encode('utf-8')
+        subject = base64.b64encode(subject).decode('utf-8')
+        user_input['Subject'] = f'=?UTF-8?B?{subject}?='.encode('utf-8')
         
         user_input['MIME_Parts'] = []
         print(f'Body:')
@@ -67,8 +69,8 @@ class Email:
             line = input()
             if (line == ''):
                 break
-            line = line[:BUFFER_SIZE] + '\r\n'
-            user_input['MIME_Parts'][0].Content += line.encode('utf-8')
+            line = line[:BUFFER_SIZE] + '\n'
+            user_input['MIME_Parts'][0].Content += base64.b64encode(line.encode('utf-8')) + b'\r\n'
     
         if (input('Do you want to send attachment (Y/N): ') == 'Y'):
             while True:
@@ -110,8 +112,8 @@ class Email:
     def Input_By_String(self, To: str, Cc: str, Bcc: str, Subject: str, body: str, files_paths: list):
         with open('config.json', 'r') as config_file:
             config = json.load(config_file)
-            username = config['General']['username']
-            usermail = config['General']['usermail']
+            username = config['Account']['username']
+            usermail = config['Account']['usermail']
             FORMAT = config['General']['FORMAT']
         
         username = username.encode(FORMAT)
@@ -123,11 +125,19 @@ class Email:
         self.To = To.encode(FORMAT)
         self.Cc = Cc.encode(FORMAT)
         self.Bcc = Bcc.encode(FORMAT)   
-        self.Subject = Subject.encode(FORMAT)
+        Subject = Subject.encode(FORMAT)
+        Subject = base64.b64encode(Subject).decode(FORMAT)
+        self.Subject = f'=?UTF-8?B?{Subject}?='.encode(FORMAT)
         
         self.MIME_Parts.append(MyMIME())
         self.MIME_Parts[0].create_body_headers()
-        self.MIME_Parts[0].Content = body
+        
+        body_writer = io.BytesIO()
+        for line in re.split(pattern='\n', string=body):
+            line = f'{line[:BUFFER_SIZE]}\r\n'.encode('utf-8')
+            line = base64.b64encode(line) + b'\r\n'
+            body_writer.write(line)
+        self.MIME_Parts[0].Content = body_writer.getvalue()
         
         for path in files_paths:             
             mime_type = mimetypes.guess_type(path, strict=True)
@@ -184,40 +194,6 @@ class Email:
                     start += BUFFER_SIZE
                 
             result.write(b'--' + self.Boundary + b'--\r\n')
-        
-        return result.getvalue()
-    
-    # use this to print email content
-    def As_String(self) -> str:    
-        result = io.StringIO()
-           
-        #header parts
-        result.write(f'Date: {self.Date}\n')
-        
-        result.write(f'From: {self.From.decode('utf-8').split()[1]}\n')
-        
-        if (self.To != b''):
-            result.write(f'To: {self.To.decode('utf-8')}\n')
-        
-        if (self.Cc != b''):
-            result.write(f'Cc: {self.Cc.decode('utf-8')}\n')
-            
-        result.write(f'Subject: {self.Subject.decode('utf-8')}\n')
-        
-        result.write('\n----------------------------------------------------------\n\n')
-        
-        #body parts
-        result.write(self.MIME_Parts[0].Content.decode('utf-8'))
-        
-        result.write('\n----------------------------------------------------------\n')
-        
-        result.write('\n')
-        if (len(self.MIME_Parts) > 1):
-            result.write('Attachment list\n')
-            for i in range(1, len(self.MIME_Parts)):
-                first_header_line = self.MIME_Parts[i].Headers.split(b'\r\n')[0]
-                file_name = first_header_line.split(b'"')[1]
-                result.write(f'{i}. {file_name.decode('utf-8')}\n')
         
         return result.getvalue()
     
