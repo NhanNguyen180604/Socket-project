@@ -134,7 +134,7 @@ class Email:
         
         body_writer = io.BytesIO()
         for line in re.split(pattern='\n', string=body):
-            line = f'{line[:BUFFER_SIZE]}\r\n'.encode('utf-8')
+            line = f'{line[:BUFFER_SIZE]}\n'.encode('utf-8')
             line = base64.b64encode(line) + b'\r\n'
             body_writer.write(line)
         self.MIME_Parts[0].Content = body_writer.getvalue()

@@ -20,8 +20,8 @@ def GetMessage():
         HOST = config['General']['MailServer']
         PORT = config['General']['POP3']
         FORMAT = config['General']['FORMAT']
-        usermail = config['General']['usermail']
-        password = config['General']['password']
+        usermail = config['Account']['usermail']
+        password = config['Account']['password']
         db_name = config['General']['Database']
         
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientsocket:
