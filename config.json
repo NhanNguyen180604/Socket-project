@@ -5,6 +5,7 @@
         "SMTP": 9696,
         "POP3": 6969,
         "Autoload": 10,
+        "GuiTheme": "dark",
         "Database": "mydb"
     },
     "Account": {
