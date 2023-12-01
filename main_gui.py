@@ -2,6 +2,7 @@ import customtkinter as ctk
 from tkinter import filedialog
 import mysql.connector
 import os
+import re
 import Email
 import clientSMTP
 import clientPOP3
@@ -12,7 +13,11 @@ from PIL import Image
 import base64
 import mimetypes
 
-WINDOW_WIDTH, WINDOW_HEIGHT = 1300, 600
+WINDOW_WIDTH, WINDOW_HEIGHT = 1200, 600
+
+global config
+with open(os.path.join(os.getcwd(), 'config.json'), 'r') as config_file:
+    config = json.load(config_file)
 
 ctk.set_appearance_mode('system')
 
@@ -24,9 +29,10 @@ class App(ctk.CTk):
         self.minsize(800, 600)
         self.protocol('WM_DELETE_WINDOW', self.close_window)
         
+        self.setting_window = SettingWindow(self)
         self.mail_content_frame = MailContentFrame(self)
         self.mail_list_frame = MailListFrame(self, self.mail_content_frame)
-        self.folder_frame = MenuFrame(self, self.mail_list_frame)
+        self.menu_frame = MenuFrame(self, self.mail_list_frame, self.setting_window)
         
         self.mainloop()
         
@@ -75,7 +81,7 @@ class MailContentFrame(ctk.CTkFrame):
         sender_label = ctk.CTkLabel(from_frame, text=f'From: {mail_dict['From']} <{mail_dict['MailFrom']}>', 
                                     font=('Calibri', 16), fg_color='transparent', anchor='w', justify='left',
                                     text_color=('black', '#F0ECE5'))
-        sender_label.pack(expand=True, fill='x')
+        sender_label.pack(expand=True, fill='both')
         
         # to
         to_frame = ctk.CTkFrame(top_frame, fg_color='transparent')
@@ -83,7 +89,7 @@ class MailContentFrame(ctk.CTkFrame):
         to_label = ctk.CTkLabel(to_frame, text=f'To: {mail_dict.get('To', '')}', anchor='w',
                                 font=('Calibri', 16), fg_color='transparent', justify='left',
                                 text_color=('black', '#F0ECE5'))
-        to_label.pack(expand=True, fill='x')
+        to_label.pack(expand=True, fill='both')
         
         # cc
         cc_frame = ctk.CTkFrame(top_frame, fg_color='transparent')
@@ -91,7 +97,16 @@ class MailContentFrame(ctk.CTkFrame):
         cc_label = ctk.CTkLabel(cc_frame, text=f'Cc: {mail_dict.get('Cc', '')}', anchor='w',
                                 font=('Calibri', 16), fg_color='transparent', justify='left',
                                 text_color=('black', '#F0ECE5'))
-        cc_label.pack(expand=True, fill='x')
+        cc_label.pack(expand=True, fill='both')
+        
+        # date
+        Date = f'{uidl[6:8]}/{uidl[4:6]}/{uidl[:4]}, {uidl[8:10]}:{uidl[10:12]}:{uidl[12:14]}'
+        date_frame = ctk.CTkFrame(top_frame, fg_color='transparent')
+        date_frame.pack(expand=True, fill='both', padx=20)
+        date_label = ctk.CTkLabel(date_frame, text=Date, anchor='w',
+                                  font=('Calibri', 16), fg_color='transparent', justify='left',
+                                  text_color=('black', '#F0ECE5'))
+        date_label.pack(expand=True, fill='both')
         
         # subject
         subject_frame = ctk.CTkFrame(top_frame, fg_color='transparent')
@@ -99,7 +114,7 @@ class MailContentFrame(ctk.CTkFrame):
         subject_label = ctk.CTkLabel(subject_frame, text=mail_dict.get('Subject', ''), anchor='w',
                                      font=('Calibri', 18, 'bold'), fg_color='transparent', justify='left',
                                      text_color=('black', '#F0ECE5'))
-        subject_label.pack(expand=True, fill='x')
+        subject_label.pack(expand=True, fill='both')
         
         # body
         if att_frame is not None:
@@ -241,38 +256,50 @@ class MailListFrame(ctk.CTkFrame):
         IsRead = True if folder == 'Sent' else mail[3]
         
         # create widgets
-        mail_frame = ctk.CTkFrame(self.mail_list_frame, corner_radius=0, fg_color='transparent')
-        from_label = ctk.CTkLabel(mail_frame, text=From, font=('Calibri', 14), anchor='w', fg_color='transparent', 
+        mail_frame = ctk.CTkFrame(self.mail_list_frame, corner_radius=5, fg_color='transparent')
+        mail_frame.rowconfigure((0, 1,), weight=1, uniform='a')
+        mail_frame.columnconfigure((0, 1), weight=1, uniform='a')
+        
+        from_label = ctk.CTkLabel(mail_frame, text=From, anchor='w', fg_color='transparent', 
                                   text_color=('black', '#F0ECE5'))
-        subject_label = ctk.CTkLabel(mail_frame, text=Subject, font=('Calibri', 14), anchor='w', fg_color='transparent', 
+        subject_label = ctk.CTkLabel(mail_frame, text=Subject, anchor='w', fg_color='transparent', 
                                      text_color=('black', '#F0ECE5'))
+        Date = f'{uidl[6:8]}/{uidl[4:6]}/{uidl[:4]}'
+        date_label = ctk.CTkLabel(mail_frame, text=Date, anchor='e', fg_color='transparent',
+                                  text_color=('black', '#F0ECE5'))
         
         # style read or unread
         if IsRead == False:
             from_label.configure(font=('Calibri', 16, 'bold'))
             subject_label.configure(font=('Calibri', 16, 'bold'))
+            date_label.configure(font=('Calibri', 16, 'bold'))
         else:
             from_label.configure(font=('Calibri', 14))
             subject_label.configure(font=('Calibri', 14))
+            date_label.configure(font=('Calibri', 14))
 
-        # pack
-        from_label.pack(side='top', expand=True, fill='x', padx=5)
-        subject_label.pack(side='top', expand=True, fill='x', padx=5)
+        # grid
+        from_label.grid(row=0, column=0, sticky='nsew', padx=5)
+        date_label.grid(row=0, column=1, sticky='nsew', padx=5)
+        subject_label.grid(row=1, column=0, sticky='nsew', columnspan=2, padx=5)
     
         # left mouse click event
-        mail_frame.bind('<Button-1>', command=lambda argument: self.mail_click(uidl, folder, [mail_frame, from_label, subject_label]))
-        from_label.bind('<Button-1>', command=lambda argument: self.mail_click(uidl, folder, [mail_frame, from_label, subject_label]))
-        subject_label.bind('<Button-1>', command=lambda argument: self.mail_click(uidl, folder, [mail_frame, from_label, subject_label]))
+        mail_frame.bind('<Button-1>', command=lambda argument: self.mail_click(uidl, folder, [mail_frame, from_label, subject_label, date_label]))
+        from_label.bind('<Button-1>', command=lambda argument: self.mail_click(uidl, folder, [mail_frame, from_label, subject_label, date_label]))
+        subject_label.bind('<Button-1>', command=lambda argument: self.mail_click(uidl, folder, [mail_frame, from_label, subject_label, date_label]))
+        date_label.bind('<Button-1>', command=lambda argument: self.mail_click(uidl, folder, [mail_frame, from_label, subject_label, date_label]))
         
         # mouse hover event
-        mail_frame.bind('<Enter>', command=lambda argument: self.mail_hover([mail_frame, from_label, subject_label])) 
-        from_label.bind('<Enter>', command=lambda argument: self.mail_hover([mail_frame, from_label, subject_label])) 
-        subject_label.bind('<Enter>', command=lambda argument: self.mail_hover([mail_frame, from_label, subject_label])) 
+        mail_frame.bind('<Enter>', command=lambda argument: self.mail_hover([mail_frame, from_label, subject_label, date_label])) 
+        from_label.bind('<Enter>', command=lambda argument: self.mail_hover([mail_frame, from_label, subject_label, date_label])) 
+        subject_label.bind('<Enter>', command=lambda argument: self.mail_hover([mail_frame, from_label, subject_label, date_label])) 
+        date_label.bind('<Enter>', command=lambda argument: self.mail_hover([mail_frame, from_label, subject_label, date_label]))
         
         # mouse stop hovering event
-        mail_frame.bind('<Leave>', command=lambda argument: self.mail_stop_hovering([mail_frame, from_label, subject_label])) 
-        from_label.bind('<Leave>', command=lambda argument: self.mail_stop_hovering([mail_frame, from_label, subject_label])) 
-        subject_label.bind('<Leave>', command=lambda argument: self.mail_stop_hovering([mail_frame, from_label, subject_label])) 
+        mail_frame.bind('<Leave>', command=lambda argument: self.mail_stop_hovering([mail_frame, from_label, subject_label, date_label])) 
+        from_label.bind('<Leave>', command=lambda argument: self.mail_stop_hovering([mail_frame, from_label, subject_label, date_label])) 
+        subject_label.bind('<Leave>', command=lambda argument: self.mail_stop_hovering([mail_frame, from_label, subject_label, date_label])) 
+        date_label.bind('<Leave>', command=lambda argument: self.mail_stop_hovering([mail_frame, from_label, subject_label, date_label]))
         
         return mail_frame
     
@@ -294,6 +321,7 @@ class MailListFrame(ctk.CTkFrame):
         self.mail_content_frame.display_mail(uidl, folder)
         mail[1].configure(font=('Calibri', 14))
         mail[2].configure(font=('Calibri', 14))
+        mail[3].configure(font=('Calibri', 14))
         
         # mark as read
         db_user = os.environ.get('DB_USER')
@@ -410,7 +438,6 @@ class MailSendingWindow(ctk.CTkToplevel):
         Subject = self.subject_entry.get()[:100]
         body = self.textbox.get('0.0', 'end')
         body = body.replace('\n\n', '\n \n')
-        body = body.replace('\n', '\r\n').encode('utf-8')
         
         email = Email.Email()
         email.Input_By_String(To, Cc, Bcc, Subject, body, self.files_paths)
@@ -420,7 +447,6 @@ class MailSendingWindow(ctk.CTkToplevel):
     def cancel_attachment(self, path, att_frame: ctk.CTkFrame):
         self.files_paths.remove(path)
         att_frame.destroy()
-        print(self.files_paths)
             
     def create_attachment_frame(self, path):
         # attachment frame
@@ -442,13 +468,329 @@ class MailSendingWindow(ctk.CTkToplevel):
         cancel_button.pack(side='right')
         return att_frame
     
+class SettingWindow(ctk.CTkFrame):
+    def __init__(self, master):
+        super().__init__(master, corner_radius=0, fg_color=('#ECF4D6', '#161A30'))
+        self.is_shown = False
+        # widgets
+        self.selected_button = None
+        self.add_widgets_util()
+        
+    def add_widgets_util(self):
+        # categories frame
+        categories_frame = ctk.CTkFrame(self, corner_radius=0, fg_color=('#9AD0C2', '#31304D'))
+        categories_frame.place(x=0, y=0, relwidth = 0.25, relheight=1) 
+        
+        # settings frame
+        settings_frame = ctk.CTkFrame(self, corner_radius=0, fg_color=('#ECF4D6', '#161A30'))
+        settings_frame.place(relx=0.25, y=0, relwidth=0.75, relheight=1)
+        
+        # categories and settings widgets
+        entry_list = []
+        self.add_widgets(categories_frame, settings_frame, entry_list)
+        
+        # save button
+        save_button = ctk.CTkButton(categories_frame, text='Save',
+                                    font=('Calibri', 16, 'bold'),
+                                    text_color=('#265073', '#F0ECE5'),
+                                    fg_color='transparent', 
+                                    hover_color=('#ECF4D6', '#161A30'),
+                                    border_color=('#ECF4D6', '#161A30'),
+                                    border_width=5,
+                                    corner_radius=20,
+                                    command=lambda: self.save_options(entry_list))
+        save_button.place(relx=0.5, rely=0.8, relwidth=0.7, relheight=0.07, anchor='s')
+        
+        # toggle button
+        toggle_button = ctk.CTkButton(categories_frame, text='Mailbox', 
+                                      font=('Calibri', 16, 'bold'),
+                                      text_color=('#265073', '#F0ECE5'),
+                                      fg_color='transparent', 
+                                      hover_color=('#ECF4D6', '#161A30'),
+                                      border_color=('#ECF4D6', '#161A30'),
+                                      border_width=5,
+                                      corner_radius=20,
+                                      command=self.toggle)
+        toggle_button.place(relx=0.5, rely=0.9, relwidth=0.7, relheight=0.07, anchor='s')
+    
+    def add_widgets(self, categories_frame, settings_frame, entry_list):        
+        # settings widgets
+        # general
+        general_frame = ctk.CTkFrame(settings_frame, corner_radius=0, fg_color='transparent')
+        general_frame.place(x=0, y=0, relwidth=1, relheight=1)
+        
+        mail_server_label = ctk.CTkLabel(general_frame, text='Mail server', font=('Calibri', 20, 'bold'), 
+                                         justify='left', anchor='w')
+        mail_server_label.place(relx=0.05, rely=0.1, relheight=0.1)
+        mail_server_entry = ctk.CTkEntry(general_frame, corner_radius=15, border_width=0, font=('Calibri', 20))
+        mail_server_entry.insert(0, string=config['General']['MailServer'])
+        mail_server_entry.place(relx=0.3, rely=0.1, relwidth=0.4, relheight=0.1)
+        entry_list.append(mail_server_entry)
+        
+        SMTP_label = ctk.CTkLabel(general_frame, text='SMTP port', font=('Calibri', 20, 'bold'), 
+                                  justify='left', anchor='w')
+        SMTP_label.place(relx=0.05, rely=0.25, relheight=0.1)
+        SMTP_entry = ctk.CTkEntry(general_frame, corner_radius=15, border_width=0, font=('Calibri', 20))
+        SMTP_entry.insert(0, string=config['General']['SMTP'])
+        SMTP_entry.place(relx=0.3, rely=0.25, relwidth=0.4, relheight=0.1)
+        entry_list.append(SMTP_entry)
+        
+        POP3_label = ctk.CTkLabel(general_frame, text='POP3 port', font=('Calibri', 20, 'bold'), 
+                                  justify='left', anchor='w')
+        POP3_label.place(relx=0.05, rely=0.4, relheight=0.1)
+        POP3_entry = ctk.CTkEntry(general_frame, corner_radius=15, border_width=0, font=('Calibri', 20))
+        POP3_entry.insert(0, string=config['General']['POP3'])
+        POP3_entry.place(relx=0.3, rely=0.4, relwidth=0.4, relheight=0.1)
+        entry_list.append(POP3_entry)
+        
+        autoload_label = ctk.CTkLabel(general_frame, text='Autoload interval', font=('Calibri', 20, 'bold'), 
+                                      justify='left', anchor='w')
+        autoload_label.place(relx=0.05, rely=0.55, relheight=0.1)
+        autoload_entry = ctk.CTkEntry(general_frame, corner_radius=15, border_width=0, font=('Calibri', 20))
+        autoload_entry.insert(0, string=config['General']['Autoload'])
+        autoload_entry.place(relx=0.3, rely=0.55, relwidth=0.4, relheight=0.1)
+        entry_list.append(autoload_entry)
+        
+        # account
+        account_frame = ctk.CTkFrame(settings_frame, corner_radius=0,
+                                               fg_color='transparent')
+        account_frame.place(x=0, y=0, relwidth=1, relheight=1)
+        
+        name_label = ctk.CTkLabel(account_frame, text='Your name', font=('Calibri', 20, 'bold'),
+                                  justify='left', anchor='w')
+        name_label.place(relx=0.05, rely=0.1, relheight=0.1)
+        name_entry = ctk.CTkEntry(account_frame, corner_radius=15, border_width=0, font=('Calibri', 20))
+        name_entry.place(relx=0.3, rely=0.1, relwidth=0.4, relheight=0.1)
+        name_entry.insert(0, config['Account']['username'])
+        entry_list.append(name_entry)
+        
+        usermail_label = ctk.CTkLabel(account_frame, text='Your mail', font=('Calibri', 20, 'bold'),
+                                      justify='left', anchor='w')
+        usermail_label.place(relx=0.05, rely=0.25, relheight=0.1)
+        usermail_entry = ctk.CTkEntry(account_frame, corner_radius=15, border_width=0, font=('Calibri', 20))
+        usermail_entry.place(relx=0.3, rely=0.25, relwidth=0.4, relheight=0.1)
+        usermail_entry.insert(0, config['Account']['usermail'])
+        entry_list.append(usermail_entry)
+        
+        password_label = ctk.CTkLabel(account_frame, text='Your password', font=('Calibri', 20, 'bold'),
+                                      justify='left', anchor='w')
+        password_label.place(relx=0.05, rely=0.4, relheight=0.1)
+        password_entry = ctk.CTkEntry(account_frame, corner_radius=15, border_width=0, font=('Calibri', 20),
+                                      show='*')
+        password_entry.place(relx=0.3, rely=0.4, relwidth=0.4, relheight=0.1)
+        password_entry.insert(0, config['Account']['password'])
+        entry_list.append(password_entry)
+        
+        show_password_button = ctk.CTkButton(account_frame, text='Show password', font=('Calibri', 20, 'bold'),
+                                             fg_color=('#9AD0C2', '#161A30'),
+                                             text_color=('black', '#F0ECE5'),
+                                             hover_color=('#2D9596', '#31304D'),
+                                             command=lambda: self.show_password(password_entry))
+        show_password_button.place(relx=0.75, rely=0.4, relheight=0.1)
+        
+        # filter
+        filter_frame = ctk.CTkScrollableFrame(settings_frame, corner_radius=0,
+                                              fg_color='transparent', 
+                                              scrollbar_button_color=('#265073', '#31304D'),
+                                              scrollbar_button_hover_color=('#2D9596', '#B6BBC4'))
+        filter_frame.place(x=0, y=0, relwidth=1, relheight=1)
+        
+        self.add_filter_widget(entry_list, 'Subject', filter_frame)
+        self.add_filter_widget(entry_list, 'Content', filter_frame)
+        self.add_filter_widget(entry_list, 'From', filter_frame)
+        
+        # based on content
+        
+        # categories widgets
+        # buttons
+        general_button = ctk.CTkButton(categories_frame, text='General', font=('Calibri', 20, 'bold'),
+                                       corner_radius=5, 
+                                       fg_color='transparent',
+                                       text_color=('#265073', '#F0ECE5'),
+                                       hover_color=('#ECF4D6', '#161A30'),
+                                       command=lambda: self.show_settings(general_button, general_frame))
+        general_button.place(relx=0.5, rely=0.2, relwidth=0.7, relheight=0.1, anchor='n')
+        
+        account_button = ctk.CTkButton(categories_frame, text='Account', font=('Calibri', 20, 'bold'),
+                                       corner_radius=5, 
+                                       fg_color='transparent',
+                                       text_color=('#265073', '#F0ECE5'),
+                                       hover_color=('#ECF4D6', '#161A30'),
+                                       command=lambda: self.show_settings(account_button, account_frame))
+        account_button.place(relx=0.5, rely=0.35, relwidth=0.7, relheight=0.1, anchor='n')
+        
+        filter_button = ctk.CTkButton(categories_frame, text='Filter', font=('Calibri', 20, 'bold'),
+                                      corner_radius=5, 
+                                      fg_color='transparent',
+                                      text_color=('#265073', '#F0ECE5'),
+                                      hover_color=('#ECF4D6', '#161A30'),
+                                      command=lambda: self.show_settings(filter_button, filter_frame))
+        filter_button.place(relx=0.5, rely=0.5, relwidth=0.7, relheight=0.1, anchor='n')
+        
+        self.show_settings(general_button, general_frame)
+    
+    def add_filter_widget(self, entry_list: list, field_filter: str, filter_frame):
+        field_filter_frame = ctk.CTkFrame(filter_frame, corner_radius=0, 
+                                          fg_color='transparent')
+        field_filter_frame.pack(expand=True, fill='x')
+        
+        subject_label = ctk.CTkLabel(field_filter_frame, text=f'Based on {field_filter.lower()}', font=('Calibri', 20, 'bold'),
+                                     justify='left', anchor='w')
+        subject_label.place(relx=0.05, rely=0.1, relheight=0.1)
+        
+        important_label = ctk.CTkLabel(field_filter_frame, text='Important folder', font=('Calibri', 18, 'bold'))
+        important_label.place(relx=0.1, rely=0.25, relheight=0.15)
+        important_entry = ctk.CTkEntry(field_filter_frame, corner_radius=15, border_width=0, font=('Calibri', 18))
+        important_entry.place(relx=0.3, rely=0.25, relwidth=0.5, relheight=0.15)
+        entry_list.append(important_entry)
+        placeholder = ''
+        for keyword in config['Filter'][field_filter]['Important']:
+            placeholder += keyword + ', '    
+        important_entry.insert(0, placeholder[:-2])
+        
+        college_label = ctk.CTkLabel(field_filter_frame, text='College folder', font=('Calibri', 18, 'bold'))       
+        college_label.place(relx=0.1, rely=0.45, relheight=0.15)
+        college_entry = ctk.CTkEntry(field_filter_frame, corner_radius=15, border_width=0, font=('Calibri', 18))
+        college_entry.place(relx=0.3, rely=0.45, relwidth=0.5, relheight=0.15)
+        entry_list.append(college_entry)
+        placeholder = ''
+        for keyword in config['Filter'][field_filter]['College']:
+            placeholder += keyword + ', '    
+        college_entry.insert(0, placeholder[:-2])
+        
+        spam_label = ctk.CTkLabel(field_filter_frame, text='Spam folder', font=('Calibri', 18, 'bold'))       
+        spam_label.place(relx=0.1, rely=0.65, relheight=0.15)
+        spam_entry = ctk.CTkEntry(field_filter_frame, corner_radius=15, border_width=0, font=('Calibri', 18))
+        spam_entry.place(relx=0.3, rely=0.65, relwidth=0.5, relheight=0.15)
+        entry_list.append(spam_entry)
+        placeholder = ''
+        for keyword in config['Filter'][field_filter]['Spam']:
+            placeholder += keyword + ', '    
+        spam_entry.insert(0, placeholder[:-2])
+    
+    def show_password(self, password_entry: ctk.CTkEntry):
+        if password_entry.cget('show') == '*':
+            password_entry.configure(show='')
+        else: 
+            password_entry.configure(show='*')
+            
+    def save_options(self, entry_list: list):
+        changed = False
+        # mailserver
+        address = re.fullmatch(r'.+\..+\..+\..+', entry_list[0].get())
+        if address != None:
+            if not any(int(byte) < 0 or int(byte) > 255 for byte in address.string.split('.')):
+                mail_server = entry_list[0].get()
+                if config['General']['MailServer'] != mail_server:
+                    config['General']['MailServer'] = mail_server
+                    changed = True
+        # ports
+        smtp: str = entry_list[1].get()
+        if smtp.isnumeric() and (int(smtp) > 0 and int(smtp) < 65536) and config['General']['SMTP'] != int(smtp):
+            config['General']['SMTP'] = int(smtp)
+            changed = True
+        pop3: str = entry_list[2].get()
+        if pop3.isnumeric() and (int(pop3) > 0 and int(pop3) < 65536) and config['General']['POP3'] != int(pop3):
+            config['General']['POP3'] = int(pop3)
+            changed = True
+        # autoload
+        autoload: str = entry_list[3].get()
+        if autoload.isnumeric() and int(autoload) > 4 and config['General']['Autoload'] != int(autoload):
+            config['General']['Autoload'] = int(autoload)
+            changed = True
+            
+        # username
+        username: str = entry_list[4].get()
+        if config['Account']['username'] != username:
+            config['Account']['username'] = username
+            changed = True
+        # usermail
+        usermail: str = entry_list[5].get()
+        if config['Account']['usermail'] != usermail:
+            config['Account']['usermail'] = usermail
+            changed = True
+        # password
+        password: str = entry_list[6].get()
+        if config['Account']['password'] != password:
+            config['Account']['password'] = password
+            changed = True
+        
+        # subject filter
+        important: list = [i for i in re.split(', |,', entry_list[7].get()) if i != '']
+        if set(config['Filter']['Subject']['Important']) != set(important):
+            config['Filter']['Subject']['Important'] = important
+            changed = True
+        college: list = [i for i in re.split(', |,', entry_list[8].get()) if i != '']
+        if set(config['Filter']['Subject']['College']) != set(college):
+            config['Filter']['Subject']['College'] = college
+            changed = True
+        spam: list = [i for i in re.split(', |,', entry_list[9].get()) if i != '']
+        if set(config['Filter']['Subject']['Spam']) != set(spam):
+            config['Filter']['Subject']['Spam'] = spam
+            changed = True
+        
+        # content filter
+        important: list = [i for i in re.split(', |,', entry_list[10].get()) if i != '']
+        if set(config['Filter']['Content']['Important']) != set(important):
+            config['Filter']['Content']['Important'] = important
+            changed = True
+        college: list = [i for i in re.split(', |,', entry_list[11].get()) if i != '']
+        if set(config['Filter']['Content']['College']) != set(college):
+            config['Filter']['Content']['College'] = college
+            changed = True
+        spam: list = [i for i in re.split(', |,', entry_list[12].get()) if i != '']
+        if set(config['Filter']['Content']['Spam']) != set(spam):
+            config['Filter']['Content']['Spam'] = spam
+            changed = True
+            
+        # from filter
+        important: list = [i for i in re.split(', |,', entry_list[13].get()) if i != '']
+        if set(config['Filter']['From']['Important']) != set(important):
+            config['Filter']['From']['Important'] = important
+            changed = True
+        college: list = [i for i in re.split(', |,', entry_list[14].get()) if i != '']
+        if set(config['Filter']['From']['College']) != set(college):
+            config['Filter']['From']['College'] = college
+            changed = True
+        spam: list = [i for i in re.split(', |,', entry_list[15].get()) if i != '']
+        if set(config['Filter']['From']['Spam']) != set(spam):
+            config['Filter']['From']['Spam'] = spam
+            changed = True
+            
+        if changed:
+            with open(os.path.join(os.getcwd(), 'config.json'), 'w') as config_file:
+                json.dump(config, config_file, indent=4)
+        
+    def show_settings(self, setting_button: ctk.CTkButton, setting_frame: ctk.CTkFrame):
+        if self.selected_button == setting_button:
+            return
+        
+        # change old selected button
+        if self.selected_button is not None:
+            self.selected_button.configure(fg_color='transparent')
+            
+        # switch to new button
+        self.selected_button = setting_button
+        self.selected_button.configure(fg_color=('#ECF4D6', '#161A30'))
+        setting_frame.lift()
+
+    def toggle(self):
+        if self.is_shown:
+            self.lower()
+            self.is_shown = False
+        else:
+            self.place(x=0, y=0, relwidth=1, relheight=1, anchor='nw')
+            self.lift()
+            self.is_shown = True
+
 class MenuFrame(ctk.CTkFrame):
-    def __init__(self, master, mail_list_frame: MailListFrame):
+    def __init__(self, master, mail_list_frame: MailListFrame, setting_window: SettingWindow):
         super().__init__(master, corner_radius=0, fg_color=('#ECF4D6', '#161A30'), border_width=0)
         self.place(x=0, y=0, relwidth=0.2, relheight=1)
         self.mail_sending_window = None
         self.selected_folder_button = None
         self.mail_list_frame = mail_list_frame
+        self.setting_window = setting_window
         self.add_widgets()
         
     def add_widgets(self):
@@ -490,11 +832,18 @@ class MenuFrame(ctk.CTkFrame):
                                     hover_color=('#9AD0C2', '#31304D'), 
                                     command=lambda: self.set_mail_list('Sent', sent_button))
         
+        setting_button = ctk.CTkButton(self, text='Setting', font=('Calibri', 16, 'bold'),
+                                       text_color=('#265073', '#F0ECE5'),
+                                       fg_color='transparent', 
+                                       hover_color=('#9AD0C2', '#31304D'), 
+                                       command=self.setting_window.toggle)
+        
         inbox_button.place(relx=0.5, rely=0.2, relwidth=0.6, relheight=0.05, anchor='n')
         important_button.place(relx=0.5, rely=0.26, relwidth=0.6, relheight=0.05, anchor='n')
         college_button.place(relx=0.5, rely=0.32, relwidth=0.6, relheight=0.05, anchor='n')
         spam_button.place(relx=0.5, rely=0.38, relwidth=0.6, relheight=0.05, anchor='n')
         sent_button.place(relx=0.5, rely=0.44, relwidth=0.6, relheight=0.05, anchor='n')
+        setting_button.place(relx=0.5, rely=0.9, relwidth=0.7, relheight=0.05, anchor='s')
         
         self.set_mail_list('Inbox', inbox_button)
     
@@ -516,7 +865,7 @@ class MenuFrame(ctk.CTkFrame):
             self.mail_sending_window = MailSendingWindow(self)
         else:
             self.mail_sending_window.focus()
-    
+
 def get_mail_list(folder_name):
     db_user = os.environ.get('DB_USER')
     db_pass = os.environ.get('DB_PASSWORD')
@@ -530,20 +879,16 @@ def get_mail_list(folder_name):
         mail_list = my_cursor.fetchall()
     return mail_list
         
-def auto_load():
-    with open('config.json', 'r') as fin:
-        config = json.load(fin)
-        interval = config['General']['Autoload']
-    
+def auto_load():   
     while True:
         get_message_thread = threading.Thread(target=clientPOP3.GetMessage)
         get_message_thread.start()
         get_message_thread.join()
-        time.sleep(interval)
+        time.sleep(config['General']['Autoload'])
             
 def main():
-    auto_load_thread = threading.Thread(target=auto_load, daemon=True)
-    auto_load_thread.start()
+    # auto_load_thread = threading.Thread(target=auto_load, daemon=True)
+    # auto_load_thread.start()
     App(WINDOW_WIDTH, WINDOW_HEIGHT)
 
 if __name__ == '__main__':
