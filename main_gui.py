@@ -17,7 +17,7 @@ import mimetypes
 WINDOW_WIDTH, WINDOW_HEIGHT = 1200, 600
 
 global config
-with open(os.path.join(os.getcwd(), 'config.json'), 'r') as config_file:
+with open(os.path.join(os.getcwd(), 'SocketProgramming/config.json'), 'r') as config_file:
     config = json.load(config_file)
 
 ctk.set_appearance_mode(config['General']['GuiTheme'])
@@ -795,7 +795,7 @@ class SettingWindow(ctk.CTkFrame):
             changed = True
             
         if changed:
-            with open(os.path.join(os.getcwd(), 'config.json'), 'w') as config_file:
+            with open(os.path.join(os.getcwd(), 'SocketProgramming/config.json'), 'w') as config_file:
                 json.dump(config, config_file, indent=4)
         
     def show_settings(self, setting_button: ctk.CTkButton, setting_frame: ctk.CTkFrame):
@@ -923,8 +923,8 @@ def auto_load():
         time.sleep(config['General']['Autoload'])
             
 def main():
-    # auto_load_thread = threading.Thread(target=auto_load, daemon=True)
-    # auto_load_thread.start()
+    auto_load_thread = threading.Thread(target=auto_load, daemon=True)
+    auto_load_thread.start()
     App(WINDOW_WIDTH, WINDOW_HEIGHT)
 
 if __name__ == '__main__':

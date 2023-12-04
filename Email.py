@@ -40,7 +40,7 @@ class Email:
         self.MIME_Parts = []
         
     def Input(self):             
-        with open('config.json', 'r') as fi:
+        with open('SocketProgramming/config.json', 'r') as fi:
             config = json.load(fi)
             usermail = config['Account']['usermail']
             username = config['Account']['username']
@@ -110,7 +110,7 @@ class Email:
             self.MIME_Parts.append(i)
             
     def Input_By_String(self, To: str, Cc: str, Bcc: str, Subject: str, body: str, files_paths: list):
-        with open('config.json', 'r') as config_file:
+        with open('SocketProgramming/config.json', 'r') as config_file:
             config = json.load(config_file)
             username = config['Account']['username']
             usermail = config['Account']['usermail']
