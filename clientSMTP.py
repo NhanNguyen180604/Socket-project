@@ -16,7 +16,7 @@ def send_mail_util():
 
 def send_mail(email: Email.Email):
     mail_content = email.As_Byte()    
-    config_file = 'SocketProgramming/config.json'
+    config_file = 'config.json'
 
     with open(config_file, 'r') as fi:
         config = json.load(fi)
@@ -87,7 +87,6 @@ def save_as_sent(email: bytes):
     file_name = sent_id + '.msg'
 
     filecontent, From, subject, content = clientPOP3.string_parser(email)
-    subject = subject.split(' ', maxsplit=1)[1]
     filepath = os.path.join(os.getcwd(), 'Sent', file_name)             
     
     os.makedirs(os.path.dirname(filepath),exist_ok=True)
@@ -96,7 +95,7 @@ def save_as_sent(email: bytes):
     
     db_user = os.environ.get('DB_USER')
     db_pass = os.environ.get('DB_PASSWORD')
-    with open(os.path.join(os.getcwd(), 'SocketProgramming/config.json'), 'r') as config_file:
+    with open(os.path.join(os.getcwd(), 'config.json'), 'r') as config_file:
         config = json.load(config_file)
         db_name = config['General']['Database']
         

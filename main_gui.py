@@ -17,7 +17,7 @@ import mimetypes
 WINDOW_WIDTH, WINDOW_HEIGHT = 1200, 600
 
 global config
-with open(os.path.join(os.getcwd(), 'SocketProgramming/config.json'), 'r') as config_file:
+with open(os.path.join(os.getcwd(), 'config.json'), 'r') as config_file:
     config = json.load(config_file)
 
 ctk.set_appearance_mode(config['General']['GuiTheme'])
@@ -28,7 +28,6 @@ class App(ctk.CTk):
         self.title('Fake mail client app')
         self.geometry(f'{width}x{height}+{int((self.winfo_screenwidth() - width) / 2)}+{int((self.winfo_screenheight() - height) / 2)}')
         self.minsize(800, 600)
-        self.protocol('WM_DELETE_WINDOW', self.close_window)
         
         self.setting_window = SettingWindow(self)
         self.mail_content_frame = MailContentFrame(self)
@@ -36,15 +35,6 @@ class App(ctk.CTk):
         self.menu_frame = MenuFrame(self, self.mail_list_frame, self.setting_window)
         
         self.mainloop()
-        
-    def close_window(self):
-        # self.delete_temp_files()
-        self.destroy()
-        
-    def delete_temp_files(self):
-        path = os.path.join(os.getcwd(), 'temp')
-        for file in os.listdir(path):
-            os.remove(os.path.join(path, file))
 
 class MailContentFrame(ctk.CTkFrame):
     def __init__(self, master):
@@ -437,7 +427,6 @@ class MailSendingWindow(ctk.CTkToplevel):
         Bcc = self.bcc_entry.get()   
         Subject = self.subject_entry.get()[:100]
         body = self.textbox.get('0.0', 'end')
-        body = body.replace('\n\n', '\n \n')
         
         email = Email.Email()
         email.Input_By_String(To, Cc, Bcc, Subject, body, self.files_paths)
@@ -795,7 +784,7 @@ class SettingWindow(ctk.CTkFrame):
             changed = True
             
         if changed:
-            with open(os.path.join(os.getcwd(), 'SocketProgramming/config.json'), 'w') as config_file:
+            with open(os.path.join(os.getcwd(), 'config.json'), 'w') as config_file:
                 json.dump(config, config_file, indent=4)
         
     def show_settings(self, setting_button: ctk.CTkButton, setting_frame: ctk.CTkFrame):

@@ -2,13 +2,12 @@ import socket
 import base64
 import os
 import json
-from email.header import decode_header
 import mysql.connector
 import io
 import re
 
 def GetMessage():
-    config_file = "SocketProgramming/config.json"
+    config_file = "config.json"
     config : dict
     HOST : str
     PORT : int
@@ -79,7 +78,7 @@ def GetMessage():
                         break
                     
                 response = response.getvalue().split('\r\n', 1)[1]
-                filecontent, From, Subject, Content = string_parser(response)
+                filecontent, From, Subject, Content = string_parser(response[:-5])
                 folder = filter(From, Subject, Content)
                 filepath = os.path.join(os.getcwd(), folder, new_mail.split()[1] + '.msg')
                 
@@ -97,7 +96,7 @@ def GetMessage():
         clientsocket.sendall(msg.encode(FORMAT))
 
 def CheckMail():
-    config_file = 'SocketProgramming/config.json'
+    config_file = 'config.json'
     with open(config_file, 'r') as fi:
         config = json.load(fi)
         HOST = config['General']['MailServer']
@@ -186,13 +185,13 @@ def string_parser(response:str):
     if('boundary' not in response.split('\r\n',1)[0]):
         part = response.split('\r\n\r\n', 1)
         header = part[0]
-        body = part[1].split('\r\n')
+        body = part[1].splitlines()
     else:
         boundary = '--'+response.split('boundary="')[1].split('"\r\n')[0]
         email.write(boundary + '\n')
         part = response.split(boundary)
         header = part[0]
-        body = part[1].split('\r\n\r\n', 1)[1].split('\r\n')
+        body = part[1].split('\r\n\r\n', 1)[1].splitlines()
     
     header = header.replace(': ', '\r\n')
     header = header.replace('; ', '\r\n')
@@ -206,17 +205,15 @@ def string_parser(response:str):
     if ('Subject' in header):
         header['Subject'] = re.search(split_pattern, header['Subject']).group(1)
         Subject.write(base64.b64decode(header['Subject']).decode())
-    for line in body:
-        if(line == 'Cg=='):
-            break
-        Content.write(base64.b64decode(line).decode() + '\n')
+    for line in [i for i in body if i != '']:
+        Content.write(base64.b64decode(line).decode())
 
     email.write("Date: " + header['Date'] + '\n')
     email.write("From: " + From.getvalue() + header['From'].split('?=',1)[1] + '\n')
-    email.write("To: " + header['To'] + '\r\n') if('To' in header) else ''
-    email.write("Cc: " + header['Cc'] + '\r\n') if('Cc' in header) else ''
+    email.write("To: " + header['To'] + '\n') if('To' in header) else ''
+    email.write("Cc: " + header['Cc'] + '\n') if('Cc' in header) else ''
     email.write("Subject: " + Subject.getvalue() + '\n') if ('Subject' in header) else ''
-    email.write('\n\n' + Content.getvalue() + '\n' + boundary) 
+    email.write('\n' + Content.getvalue() + '\n' + boundary) 
     
     if len(part) > 2:
         for att in part[2:-1]: 
@@ -264,7 +261,7 @@ def ReadFile(folderpath, uidl):
 
 def filter(From:str, Subject:str, Content:str) -> str:
     
-    with open('SocketProgramming/config.json', 'r') as fin:
+    with open('config.json', 'r') as fin:
         config = json.load(fin)
         
     #filter based on from
@@ -287,6 +284,4 @@ def filter(From:str, Subject:str, Content:str) -> str:
         if (any(key in temp for key in Keywords)):
             return Folder
     
-    return 'Inbox'
-
-  
+    return 'Inbox' 
