@@ -5,9 +5,10 @@ import json
 from email.header import decode_header
 import mysql.connector
 import io
+import re
 
 def GetMessage():
-    config_file = "config.json"
+    config_file = "SocketProgramming/config.json"
     config : dict
     HOST : str
     PORT : int
@@ -83,12 +84,12 @@ def GetMessage():
                 filepath = os.path.join(os.getcwd(), folder, new_mail.split()[1] + '.msg')
                 
                 os.makedirs(os.path.dirname(filepath),exist_ok=True)
-                with open(filepath, 'w') as fi:
+                with open(filepath, 'w', encoding = FORMAT) as fi:
                     fi.write(filecontent)
                     
                 # insert row into database
                 command = 'INSERT INTO email VALUES (%s, %s, %s, %s, %s, %s)'
-                val = (int(new_mail.split()[0]), new_mail.split()[1], From, Subject.split(maxsplit=1)[1], folder, 0)
+                val = (int(new_mail.split()[0]), new_mail.split()[1], From, Subject, folder, 0)
                 cursor.execute(command, val)
                 db.commit() # save changes
              
@@ -96,7 +97,7 @@ def GetMessage():
         clientsocket.sendall(msg.encode(FORMAT))
 
 def CheckMail():
-    config_file = 'config.json'
+    config_file = 'SocketProgramming/config.json'
     with open(config_file, 'r') as fi:
         config = json.load(fi)
         HOST = config['General']['MailServer']
@@ -181,69 +182,68 @@ def string_parser(response:str):
     Subject = io.StringIO()
     Content = io.StringIO()
     
-    if('boundary' not in response[:50]):
-        boundary = '\r\n\r\n'
+    boundary = ''
+    if('boundary' not in response.split('\r\n',1)[0]):
+        part = response.split('\r\n\r\n', 1)
+        header = part[0]
+        body = part[1].split('\r\n')
     else:
         boundary = '--'+response.split('boundary="')[1].split('"\r\n')[0]
+        email.write(boundary + '\n')
+        part = response.split(boundary)
+        header = part[0]
+        body = part[1].split('\r\n\r\n', 1)[1].split('\r\n')
     
-    part = response.split(boundary)
-    header = part[0].splitlines()
-    body = part[1].splitlines()
+    header = header.replace(': ', '\r\n')
+    header = header.replace('; ', '\r\n')
+    header = header.replace('="', '\r\n')
+    header = header.split('\r\n')
+    header = dict(zip(header[0::2], header[1::2]))
 
-    for line in header:
-        if("Date:" in line ):
-            email.write(line + '\n')
-        if("From" in line):
-            fromLine = line.split()
-            decoded = decode_header (fromLine[1])[0][0].decode(decode_header(fromLine[1])[0][1])
-            email.write(fromLine[0] + ' ' + decoded + fromLine[2] + '\n')
-            From.write(fromLine[2][1:-1])
-        if("To:" in line or "Cc:" in line or "Bcc:" in line):
-            email.write(line + '\n')
-        if("Subject" in line):
-            email.write(line + '\n')
-            Subject.write(line) 
-    
-    email.write('Body:')
-    
-    if part[1] == '\r\n.\r\n':
-        email.write('\n\n.')
-        return email.getvalue(), From.getvalue(), Subject.getvalue(), Content.getvalue()
+    split_pattern = r'=\?UTF-8\?B\?(.*?)\?='
+    FromWho = re.search(split_pattern, header['From']).group(1)
+    From.write(base64.b64decode(FromWho).decode())
+    if ('Subject' in header):
+        header['Subject'] = re.search(split_pattern, header['Subject']).group(1)
+        Subject.write(base64.b64decode(header['Subject']).decode())
+    for line in body:
+        if(line == 'Cg=='):
+            break
+        Content.write(base64.b64decode(line).decode() + '\n')
 
-    if(boundary == '\r\n\r\n'):
-        start = 0
-    else:
-        start = 4
+    email.write("Date: " + header['Date'] + '\n')
+    email.write("From: " + From.getvalue() + header['From'].split('?=',1)[1] + '\n')
+    email.write("To: " + header['To'] + '\r\n') if('To' in header) else ''
+    email.write("Cc: " + header['Cc'] + '\r\n') if('Cc' in header) else ''
+    email.write("Subject: " + Subject.getvalue() + '\n') if ('Subject' in header) else ''
+    email.write('\n\n' + Content.getvalue() + '\n' + boundary) 
     
-    for line in body[start:]:
-        email.write(line + '\n')
-        Content.write(line)
-    
-    if 'Content-Type' in part[2]:
-        email.write("\nFile:")
-        atts = []
-        atts.append(part[2].splitlines())
-        for bruh in part[3:-1]:
-            atts.append(bruh.splitlines())
-        for att in atts: 
-            filename = att[3].split('=')[1].strip('" ')
+    if len(part) > 2:
+        for att in part[2:-1]: 
+            filename = att.split('filename="', 1)[1].split('"', 1)[0]
             filedata = io.StringIO()
-            for line in att[5:]:
-                filedata.write(line) 
-            email.write(f'\n\n{filename}\n{filedata.getvalue()}')
-    
-    email.write('\n\n.')
+            filedata.write(att.split('\r\n\r\n', 1)[1].strip())
+            email.write(f'\n{filename}\n{filedata.getvalue()}\n{boundary}')
     
     return email.getvalue(), From.getvalue(), Subject.getvalue(), Content.getvalue()
 
 def ReadFile(folderpath, uidl):
-    with open(os.path.join(folderpath, uidl + '.msg'), 'r') as fi:
+    with open(os.path.join(folderpath, uidl + '.msg'), 'r', encoding='utf-8') as fi:
         filecontent = fi.read()
-        section = filecontent.split('\n\n')
+        section = filecontent.split('\n\n', 1)
         mail_dict = {}
-        header = section[0].split('\nBody:', 1)[0]
-        body = section[0].split('\nBody:', 1)[1]
-        
+        firstline = filecontent.split('\n', 1)[0]
+        boundary = ''
+        if firstline[0:3] != 'Date':
+            boundary = firstline
+            header = section[0].split('\n', 1)[1]
+        else:
+            header = section[0]
+        if boundary != '':
+            body = section[1].split(boundary, 1)[0]
+            files = section[1].split(boundary)[1:-1]
+        else:
+            body = section[1]    
         for line in header.splitlines():
             if('From' in line):
                 mail_dict['From'] = line.split('<', 1)[0].split(' ', maxsplit=1)[1]
@@ -254,17 +254,17 @@ def ReadFile(folderpath, uidl):
         if body:
             mail_dict['Body'] = body
             
-        if 'File:' in section[1]:
+        if files:
             mail_dict['File'] = []
-            for file in section[2:-1]:
-                filename = file.split('\n',1)[0]
-                filedata = file.split('\n',1)[1]
+            for file in files:
+                filename = file.split('\n',2)[1]
+                filedata = file.split('\n',2)[2]
                 mail_dict['File'].append((filename, filedata))                  
     return mail_dict, header, body         
 
 def filter(From:str, Subject:str, Content:str) -> str:
     
-    with open('config.json', 'r') as fin:
+    with open('SocketProgramming/config.json', 'r') as fin:
         config = json.load(fin)
         
     #filter based on from
@@ -287,4 +287,6 @@ def filter(From:str, Subject:str, Content:str) -> str:
         if (any(key in temp for key in Keywords)):
             return Folder
     
-    return 'Inbox'    
+    return 'Inbox'
+
+  

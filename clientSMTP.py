@@ -16,7 +16,7 @@ def send_mail_util():
 
 def send_mail(email: Email.Email):
     mail_content = email.As_Byte()    
-    config_file = 'config.json'
+    config_file = 'SocketProgramming/config.json'
 
     with open(config_file, 'r') as fi:
         config = json.load(fi)
@@ -91,12 +91,12 @@ def save_as_sent(email: bytes):
     filepath = os.path.join(os.getcwd(), 'Sent', file_name)             
     
     os.makedirs(os.path.dirname(filepath),exist_ok=True)
-    with open(filepath, 'w') as fi:
+    with open(filepath, 'w', encoding='utf-8') as fi:
         fi.write(filecontent)
     
     db_user = os.environ.get('DB_USER')
     db_pass = os.environ.get('DB_PASSWORD')
-    with open(os.path.join(os.getcwd(), 'config.json'), 'r') as config_file:
+    with open(os.path.join(os.getcwd(), 'SocketProgramming/config.json'), 'r') as config_file:
         config = json.load(config_file)
         db_name = config['General']['Database']
         
