@@ -17,6 +17,9 @@ import mimetypes
 WINDOW_WIDTH, WINDOW_HEIGHT = 1200, 600
 
 global config
+global get_message_thread
+get_message_thread = True
+
 with open(os.path.join(os.getcwd(), 'config.json'), 'r') as config_file:
     config = json.load(config_file)
 
@@ -28,6 +31,7 @@ class App(ctk.CTk):
         self.title('Fake mail client app')
         self.geometry(f'{width}x{height}+{int((self.winfo_screenwidth() - width) / 2)}+{int((self.winfo_screenheight() - height) / 2)}')
         self.minsize(800, 600)
+        self.wm_protocol('WM_DELETE_WINDOW', self.shutdown)
         
         self.setting_window = SettingWindow(self)
         self.mail_content_frame = MailContentFrame(self)
@@ -35,6 +39,11 @@ class App(ctk.CTk):
         self.menu_frame = MenuFrame(self, self.mail_list_frame, self.setting_window)
         
         self.mainloop()
+        
+    def shutdown(self):
+        global get_message_thread
+        get_message_thread = False
+        self.destroy()
 
 class MailContentFrame(ctk.CTkFrame):
     def __init__(self, master):
@@ -905,14 +914,16 @@ def get_mail_list(folder_name):
     return mail_list
         
 def auto_load():   
-    while True:
-        get_message_thread = threading.Thread(target=clientPOP3.GetMessage)
-        get_message_thread.start()
-        get_message_thread.join()
-        time.sleep(config['General']['Autoload'])
+    global get_message_thread
+    while get_message_thread:
+        clientPOP3.GetMessage()
+        for i in range(config['General']['Autoload']):
+            time.sleep(1)
+            if get_message_thread == False:
+                return
             
 def main():
-    auto_load_thread = threading.Thread(target=auto_load, daemon=True)
+    auto_load_thread = threading.Thread(target=auto_load)
     auto_load_thread.start()
     App(WINDOW_WIDTH, WINDOW_HEIGHT)
 
