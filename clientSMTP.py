@@ -73,10 +73,14 @@ def send_mail(email: Email.Email):
         
         client.sendall(mail_content)
             
-        msg = '\r\n.\r\nQUIT\r\n'
+        msg = '\r\n.\r\n'
         client.sendall(msg.encode('utf-8'))
-        
         client.recv(1024)
+        
+        msg = 'QUIT\r\n'
+        client.sendall(msg.encode('utf-8'))
+        client.recv(1024)
+        
         save_as_sent(mail_content)
         
 def save_as_sent(email: bytes):

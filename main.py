@@ -6,7 +6,7 @@ import json
 
 def main():
     def auto_load():
-        with open('SocketProgramming/config.json', 'r') as fin:
+        with open('config.json', 'r') as fin:
             config = json.load(fin)
             interval = config['General']['Autoload']
         
@@ -30,7 +30,6 @@ def main():
             case 1:
                 clientSMTP.send_mail_util()
             case 2:
-                clientPOP3.GetMessage()
                 clientPOP3.CheckMail()
             case 3:
                 return
