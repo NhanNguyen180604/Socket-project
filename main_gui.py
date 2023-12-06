@@ -1,6 +1,6 @@
 import customtkinter as ctk
 from tkinter import filedialog
-import mysql.connector
+import sqlite3
 import os
 import re
 import Email
@@ -13,6 +13,7 @@ import io
 from PIL import Image
 import base64
 import mimetypes
+import create_db
 
 WINDOW_WIDTH, WINDOW_HEIGHT = 1200, 600
 
@@ -250,9 +251,9 @@ class MailListFrame(ctk.CTkFrame):
         
     def create_mail_frame(self, mail, folder):
         uidl = mail[0]
-        From = 'Me' if folder == 'Sent' else mail[1]
-        Subject = mail[1] if folder == 'Sent' else mail[2]
-        IsRead = True if folder == 'Sent' else mail[3]
+        From = mail[1]
+        Subject = mail[2]
+        IsRead = mail[3]
         
         # create widgets
         mail_frame = ctk.CTkFrame(self.mail_list_frame, corner_radius=5, fg_color='transparent')
@@ -323,11 +324,10 @@ class MailListFrame(ctk.CTkFrame):
         mail[3].configure(font=('Calibri', 14))
         
         # mark as read
-        db_user = os.environ.get('DB_USER')
-        db_password = os.environ.get('DB_PASSWORD')
-        with mysql.connector.connect(host='127.0.0.1', user=db_user, password=db_password, database='mydb') as db:
+        with sqlite3.connect(config['General']['Database']) as db:
             my_cursor = db.cursor()
             my_cursor.execute(f'UPDATE email SET IsRead = TRUE WHERE UIDL = "{uidl}"')
+            my_cursor.close()
             db.commit()
 
     def mail_hover(self, mail):
@@ -860,11 +860,6 @@ class MenuFrame(ctk.CTkFrame):
                                     fg_color='transparent', 
                                     hover_color=('#9AD0C2', '#31304D'), 
                                     command=lambda: self.set_mail_list('Spam', spam_button))
-        sent_button = ctk.CTkButton(self, text='Sent', font=('Calibri', 14, 'bold'),
-                                    text_color=('#265073', '#F0ECE5'),
-                                    fg_color='transparent', 
-                                    hover_color=('#9AD0C2', '#31304D'), 
-                                    command=lambda: self.set_mail_list('Sent', sent_button))
         
         setting_button = ctk.CTkButton(self, text='Setting', font=('Calibri', 16, 'bold'),
                                        text_color=('#265073', '#F0ECE5'),
@@ -876,7 +871,6 @@ class MenuFrame(ctk.CTkFrame):
         important_button.place(relx=0.5, rely=0.26, relwidth=0.6, relheight=0.05, anchor='n')
         college_button.place(relx=0.5, rely=0.32, relwidth=0.6, relheight=0.05, anchor='n')
         spam_button.place(relx=0.5, rely=0.38, relwidth=0.6, relheight=0.05, anchor='n')
-        sent_button.place(relx=0.5, rely=0.44, relwidth=0.6, relheight=0.05, anchor='n')
         setting_button.place(relx=0.5, rely=0.9, relwidth=0.7, relheight=0.05, anchor='s')
         
         self.set_mail_list('Inbox', inbox_button)
@@ -901,28 +895,26 @@ class MenuFrame(ctk.CTkFrame):
             self.mail_sending_window.focus()
 
 def get_mail_list(folder_name):
-    db_user = os.environ.get('DB_USER')
-    db_pass = os.environ.get('DB_PASSWORD')
-    with mysql.connector.connect(host='127.0.0.1', user=db_user, password=db_pass, database='mydb') as db:
+    with sqlite3.connect(config['General']['Database']) as db:
         my_cursor = db.cursor()
-        if folder_name == 'Sent':
-            command = f'SELECT * FROM sent'
-        else:
-            command = f'SELECT UIDL, SenderMail, Subject, IsRead FROM email WHERE Folder = "{folder_name}"'
+        command = f'SELECT UIDL, SenderMail, Subject, IsRead FROM email WHERE Folder = "{folder_name}"'
         my_cursor.execute(command)
         mail_list = my_cursor.fetchall()
+        my_cursor.close()
     return mail_list
         
 def auto_load():   
     global get_message_thread
     while get_message_thread:
-        clientPOP3.GetMessage()
         for i in range(config['General']['Autoload']):
             time.sleep(1)
             if get_message_thread == False:
                 return
+        clientPOP3.GetMessage()
             
 def main():
+    create_db.create_db()
+    clientPOP3.GetMessage()
     auto_load_thread = threading.Thread(target=auto_load)
     auto_load_thread.start()
     App(WINDOW_WIDTH, WINDOW_HEIGHT)

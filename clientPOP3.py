@@ -2,27 +2,21 @@ import socket
 import base64
 import os
 import json
-import mysql.connector
+import sqlite3
 import io
 import re
 
-def GetMessage():
-    config_file = "config.json"
-    config : dict
-    HOST : str
-    PORT : int
-    FORMAT : str
-    password : str
-    usermail : str
-    
-    with open(config_file, 'r') as fi:
-        config = json.load(fi)
-        HOST = config['General']['MailServer']
-        PORT = config['General']['POP3']
-        FORMAT = config['General']['FORMAT']
-        usermail = config['Account']['usermail']
-        password = config['Account']['password']
-        db_name = config['General']['Database']
+global config
+with open('config.json', 'r') as config_file:
+    config = json.load(config_file)
+
+def GetMessage():   
+    HOST = config['General']['MailServer']
+    PORT = config['General']['POP3']
+    FORMAT = config['General']['FORMAT']
+    usermail = config['Account']['usermail']
+    password = config['Account']['password']
+    db_name = config['General']['Database']
         
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientsocket:
         clientsocket.connect((HOST, PORT))
@@ -54,10 +48,7 @@ def GetMessage():
         
         uidlList = [line[:-4] for line in response] # format of each line is '{number} {UIDL}'
         
-        db_user = os.environ.get('DB_USER')
-        db_password = os.environ.get('DB_PASSWORD')
-        
-        with mysql.connector.connect(host=HOST, user=db_user, password=db_password, database=db_name) as db:
+        with sqlite3.connect(db_name) as db:
             cursor = db.cursor()
             cursor.execute('SELECT No, UIDL from email')
             db_UIDL = [f'{i[0]} {i[1]}' for i in cursor.fetchall()]
@@ -87,21 +78,17 @@ def GetMessage():
                     fi.write(filecontent)
                     
                 # insert row into database
-                command = 'INSERT INTO email VALUES (%s, %s, %s, %s, %s, %s)'
-                val = (int(new_mail.split()[0]), new_mail.split()[1], From, Subject, folder, 0)
+                command = '''INSERT INTO email VALUES (?, ?, ?, ?, ?, ?)'''
+                val = (int(new_mail.split()[0]), new_mail.split()[1], From, Subject, folder, False)
                 cursor.execute(command, val)
-                db.commit() # save changes
+                
+            cursor.close()
+            db.commit() # save changes
              
         msg = "QUIT\r\n"
         clientsocket.sendall(msg.encode(FORMAT))
 
 def CheckMail():
-    config_file = 'config.json'
-    with open(config_file, 'r') as fi:
-        config = json.load(fi)
-        HOST = config['General']['MailServer']
-        db_name = config['General']['Database']
-        
     while True:
         print("Here is the list of folders in your mailbox:")
         print("1. Inbox")
@@ -122,12 +109,10 @@ def CheckMail():
             print("This folder doesn't exist")
             return
         
-        db_user = os.environ.get('DB_USER')
-        db_password = os.environ.get('DB_PASSWORD')
-        with mysql.connector.connect(host=HOST, user=db_user, password=db_password, database=db_name) as db: 
+        with sqlite3.connect('email_db') as db: 
+            cursor = db.cursor()
             while True:
                 command = 'SELECT * FROM email WHERE Folder = "' + folder_name + '"'
-                cursor = db.cursor()
                 cursor.execute(command)
                 files = cursor.fetchall()
                 
@@ -153,7 +138,6 @@ def CheckMail():
                 else:
                     command = 'UPDATE email SET IsRead = TRUE WHERE UIDL = "' + files[mail_choice - 1][1] + '"'
                     cursor.execute(command)
-                    db.commit()  # save changes
                     
                     mail_dict, header, body = ReadFile(folderpath, files[mail_choice - 1][1])
                     print(header + '\n\n' + body)  
@@ -165,6 +149,9 @@ def CheckMail():
                                 os.makedirs(os.path.dirname(filepath), exist_ok=True)
                                 with open(filepath, 'wb') as fi:
                                     fi.write(base64.b64decode(att[1]))
+            
+            cursor.close()
+            db.commit()  # save changes
                                         
 def get_folder_name(folder_number):
     folders = {
@@ -222,7 +209,7 @@ def string_parser(response:str):
             filedata.write(att.split('\r\n\r\n', 1)[1].strip())
             email.write(f'\n{filename}\n{filedata.getvalue()}\n{boundary}')
     
-    return email.getvalue(), From.getvalue(), Subject.getvalue(), Content.getvalue()
+    return email.getvalue(), header['From'].split(maxsplit=1)[1][1:-1], Subject.getvalue(), Content.getvalue()
 
 def ReadFile(folderpath, uidl):
     with open(os.path.join(folderpath, uidl + '.msg'), 'r', encoding='utf-8') as fi:

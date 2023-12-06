@@ -6,7 +6,7 @@
         "POP3": 6969,
         "Autoload": 10,
         "GuiTheme": "light",
-        "Database": "mydb"
+        "Database": "email_db"
     },
     "Account": {
         "usermail": "ntnhan@gmail.com",
