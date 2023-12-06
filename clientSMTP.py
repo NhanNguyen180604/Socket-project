@@ -1,11 +1,7 @@
 import socket
 import Email
-import os
 import json
 import re
-import time
-import sqlite3
-import clientPOP3
 
 def send_mail_util():
     email = Email.Email()

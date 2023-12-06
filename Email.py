@@ -4,7 +4,6 @@ import time
 import os
 import mimetypes
 import base64
-import re
 import json
 import io
 
