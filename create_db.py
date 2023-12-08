@@ -1,7 +1,7 @@
 import sqlite3
 
-def create_db():
-    with sqlite3.connect('email_db') as db:
+def create_db(db_name: str):
+    with sqlite3.connect(db_name) as db:
         cursor = db.cursor()
         
         query = '''CREATE TABLE IF NOT EXISTS email (

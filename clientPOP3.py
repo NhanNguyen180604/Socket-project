@@ -6,17 +6,15 @@ import sqlite3
 import io
 import re
 
-global config
-with open('config.json', 'r') as config_file:
-    config = json.load(config_file)
-
 def GetMessage():   
+    with open('config.json', 'r') as config_file:
+        config = json.load(config_file)
     HOST = config['General']['MailServer']
     PORT = config['General']['POP3']
     FORMAT = config['General']['FORMAT']
     usermail = config['Account']['usermail']
     password = config['Account']['password']
-    db_name = config['General']['Database']
+    db_name = usermail + '_db'
         
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientsocket:
         clientsocket.connect((HOST, PORT))
@@ -247,7 +245,6 @@ def ReadFile(folderpath, uidl):
     return mail_dict, header, body         
 
 def filter(From:str, Subject:str, Content:str) -> str:
-    
     with open('config.json', 'r') as fin:
         config = json.load(fin)
         

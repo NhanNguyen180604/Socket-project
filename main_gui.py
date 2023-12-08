@@ -17,12 +17,15 @@ import create_db
 
 WINDOW_WIDTH, WINDOW_HEIGHT = 1200, 600
 
-global config
 global get_message_thread
 get_message_thread = True
 
+global config
 with open(os.path.join(os.getcwd(), 'config.json'), 'r') as config_file:
     config = json.load(config_file)
+    
+global db_name
+db_name = config['Account']['usermail'] + '_db'
 
 ctk.set_appearance_mode(config['General']['GuiTheme'])
 
@@ -45,7 +48,7 @@ class App(ctk.CTk):
         global get_message_thread
         get_message_thread = False
         self.destroy()
-
+                               
 class MailContentFrame(ctk.CTkFrame):
     def __init__(self, master):
         super().__init__(master, corner_radius=0, fg_color=('#ECF4D6', '#161A30'))
@@ -164,7 +167,7 @@ class MailContentFrame(ctk.CTkFrame):
         data = base64.b64decode(image[1].encode('utf-8'))
         img_original = Image.open(io.BytesIO(data))           
         img_ratio = img_original.size[0] / img_original.size[1]
-        img_ctk = ctk.CTkImage(light_image=img_original, dark_image=img_original)
+        img_ctk = ctk.CTkImage(img_original)
         img_ctk.configure(size=(WINDOW_WIDTH / 2, int(WINDOW_WIDTH/ (2 * img_ratio))))
         
         label = ctk.CTkLabel(body_frame, text=image[0], font=('Calibri', 16, 'bold'),
@@ -324,7 +327,7 @@ class MailListFrame(ctk.CTkFrame):
         mail[3].configure(font=('Calibri', 14))
         
         # mark as read
-        with sqlite3.connect(config['General']['Database']) as db:
+        with sqlite3.connect(db_name) as db:
             my_cursor = db.cursor()
             my_cursor.execute(f'UPDATE email SET IsRead = TRUE WHERE UIDL = "{uidl}"')
             my_cursor.close()
@@ -343,7 +346,8 @@ class MailListFrame(ctk.CTkFrame):
 class MailSendingWindow(ctk.CTkToplevel):
     def __init__(self, master):
         super().__init__(master, fg_color=('#ECF4D6', '#161A30'))
-        self.geometry('800x600')
+        width, height = 800, 600
+        self.geometry(f'{width}x{height}+{int((self.winfo_screenwidth() - width) / 2)}+{int((self.winfo_screenheight() - height) / 2)}')
         self.title('Sending mail')
         self.minsize(width=600, height=400)
 
@@ -744,6 +748,8 @@ class SettingWindow(ctk.CTkFrame):
         if config['Account']['usermail'] != usermail:
             config['Account']['usermail'] = usermail
             changed = True
+            global db_name
+            db_name = config['Account']['usermail'] + '_db'
         # password
         password: str = option_list[7].get()
         if config['Account']['password'] != password:
@@ -895,7 +901,7 @@ class MenuFrame(ctk.CTkFrame):
             self.mail_sending_window.focus()
 
 def get_mail_list(folder_name):
-    with sqlite3.connect(config['General']['Database']) as db:
+    with sqlite3.connect(db_name) as db:
         my_cursor = db.cursor()
         command = f'SELECT UIDL, SenderMail, Subject, IsRead FROM email WHERE Folder = "{folder_name}"'
         my_cursor.execute(command)
@@ -913,7 +919,7 @@ def auto_load():
         clientPOP3.GetMessage()
             
 def main():
-    create_db.create_db()
+    create_db.create_db(db_name)
     clientPOP3.GetMessage()
     auto_load_thread = threading.Thread(target=auto_load)
     auto_load_thread.start()
