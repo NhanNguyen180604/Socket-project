@@ -5,8 +5,7 @@
         "SMTP": 9696,
         "POP3": 6969,
         "Autoload": 10,
-        "GuiTheme": "light",
-        "Database": "email_db"
+        "GuiTheme": "dark"
     },
     "Account": {
         "usermail": "ntnhan@gmail.com",

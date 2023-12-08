@@ -156,9 +156,13 @@ class MailContentFrame(ctk.CTkFrame):
         att_label.pack(side='left')
 
         # download button
+        download_img = ctk.CTkImage(light_image=Image.open('images/download button icon/light download button.png'),
+                                    dark_image=Image.open('images/download button icon/dark download button.png'),
+                                    size=(20, 20))
         download_button = ctk.CTkButton(att_holder, text='Download', font=('Calibri', 14, 'italic'), 
                                         fg_color=('#ECF4D6', '#161A30'), text_color=('black', '#F0ECE5'),
                                         hover_color=('#9AD0C2', '#31304D'),
+                                        image=download_img,
                                         command=lambda: self.download_files(attachment))
         download_button.pack(side='right')
         return att_holder
@@ -397,13 +401,17 @@ class MailSendingWindow(ctk.CTkToplevel):
         self.textbox.place(relx=0.5, rely=0.34, relwidth=0.9, relheight=0.5, anchor='n')
         
         # attachment button
+        attach_img = ctk.CTkImage(light_image=Image.open('images/attach button icon/light attach button.png'),
+                                dark_image=Image.open('images/attach button icon/dark attach button.png'),
+                                size=(25, 25))
         self.files_paths = []
         self.att_button = ctk.CTkButton(self, text='Attach files', font=('Calibri', 16, 'bold'), 
                                         text_color=('black', '#F0ECE5'), corner_radius=15, 
                                         command=self.get_files_paths, border_width=4,
                                         border_color=('#9AD0C2', '#31304D'),
                                         fg_color=('#ECF4D6', '#161A30'), 
-                                        hover_color=('#9AD0C2', '#31304D'))
+                                        hover_color=('#9AD0C2', '#31304D'),
+                                        image=attach_img)
         self.att_button.place(relx=0.95, rely=0.9, relheight=0.07, anchor='ne')
         
         # attachment display
@@ -413,12 +421,16 @@ class MailSendingWindow(ctk.CTkToplevel):
                                                      scrollbar_button_hover_color=('#2D9596', '#B6BBC4'))
         
         # send button
+        send_img = ctk.CTkImage(light_image=Image.open('images/send button icon/light send button.png'),
+                                dark_image=Image.open('images/send button icon/dark send button.png'),
+                                size=(25, 25))
         self.send_button = ctk.CTkButton(self, text='Send', font=('Calibri', 16, 'bold'), 
                                          text_color=('black', '#F0ECE5'), corner_radius=15, 
                                          command=self.send_mail, border_width=4,
                                          border_color=('#9AD0C2', '#31304D'),
                                          fg_color=('#ECF4D6', '#161A30'), 
-                                         hover_color=('#9AD0C2', '#31304D'))
+                                         hover_color=('#9AD0C2', '#31304D'),
+                                         image=send_img)
         self.send_button.place(relx=0.05, rely=0.9, relheight=0.07, anchor='nw')
         
     def get_files_paths(self):
@@ -449,6 +461,8 @@ class MailSendingWindow(ctk.CTkToplevel):
     def cancel_attachment(self, path, att_frame: ctk.CTkFrame):
         self.files_paths.remove(path)
         att_frame.destroy()
+        if (len(self.files_paths) == 0):
+            self.att_list_frame.place_forget()
             
     def create_attachment_frame(self, path):
         # attachment frame
@@ -462,7 +476,11 @@ class MailSendingWindow(ctk.CTkToplevel):
         att_label.pack(side='left')
         
         # cancel button
-        cancel_button = ctk.CTkButton(att_frame, text='X', font=('Calibri', 16, 'bold'), width=10, 
+        cancel_img = ctk.CTkImage(light_image=Image.open('images/X button icon/light X button.png'),
+                                  dark_image=Image.open('images/X button icon/dark X button.png'),
+                                  size=(20, 20))
+        cancel_button = ctk.CTkButton(att_frame, text='', font=('Calibri', 16, 'bold'), width=10, 
+                                      image=cancel_img,
                                       text_color=('#265073', '#F0ECE5'), 
                                       fg_color='transparent',
                                       hover_color=('#9AD0C2', '#31304D'),
@@ -494,6 +512,9 @@ class SettingWindow(ctk.CTkFrame):
         self.add_widgets(categories_frame, settings_frame, option_list)
         
         # save button
+        save_img = ctk.CTkImage(light_image=Image.open('images/save button icon/light save button.png'),
+                                dark_image=Image.open('images/save button icon/dark save button.png'),
+                                size=(25, 25))
         save_button = ctk.CTkButton(categories_frame, text='Save',
                                     font=('Calibri', 16, 'bold'),
                                     text_color=('#265073', '#F0ECE5'),
@@ -502,10 +523,14 @@ class SettingWindow(ctk.CTkFrame):
                                     border_color=('#ECF4D6', '#161A30'),
                                     border_width=5,
                                     corner_radius=20,
+                                    image=save_img,
                                     command=lambda: self.save_options(option_list))
         save_button.place(relx=0.5, rely=0.8, relwidth=0.7, relheight=0.07, anchor='s')
         
         # toggle button
+        folder_img = ctk.CTkImage(light_image=Image.open('images/folder icon/folder light.png'),
+                                  dark_image=Image.open('images/folder icon/folder dark.png'), 
+                                  size=(20, 20))
         toggle_button = ctk.CTkButton(categories_frame, text='Mailbox', 
                                       font=('Calibri', 16, 'bold'),
                                       text_color=('#265073', '#F0ECE5'),
@@ -514,6 +539,7 @@ class SettingWindow(ctk.CTkFrame):
                                       border_color=('#ECF4D6', '#161A30'),
                                       border_width=5,
                                       corner_radius=20,
+                                      image=folder_img,
                                       command=self.toggle)
         toggle_button.place(relx=0.5, rely=0.9, relwidth=0.7, relheight=0.07, anchor='s')
     
@@ -834,15 +860,23 @@ class MenuFrame(ctk.CTkFrame):
         self.add_widgets()
         
     def add_widgets(self):
-        new_message_button = ctk.CTkButton(self, text='Compose', font=('Calibri', 18, 'bold'),
-                                           fg_color='transparent', 
+        compose_img = ctk.CTkImage(light_image=Image.open('images/compose button icon/light compose button.png'),
+                                   dark_image=Image.open('images/compose button icon/dark compose button.png'),
+                                   size=(25, 25))
+        compose_button = ctk.CTkButton(self, text='Compose', font=('Calibri', 18, 'bold'),
+                                           fg_color='transparent',
                                            text_color=('#265073', '#F0ECE5'), 
                                            hover_color=('#9AD0C2', '#31304D'),
                                            border_color=('#9AD0C2', '#31304D'), border_width=3,
+                                           image = compose_img,
                                            corner_radius=20, command=self.create_send_mail_window)
-        new_message_button.place(relx=0.5, rely=0.03, relwidth=0.8, relheight=0.07, anchor='n')
+        compose_button.place(relx=0.5, rely=0.03, relwidth=0.8, relheight=0.07, anchor='n')
         
-        mail_folders_label = ctk.CTkLabel(self, text='Mail folders', font=('Calibri', 16, 'bold'))
+        folder_img = ctk.CTkImage(light_image=Image.open('images/folder icon/folder light.png'),
+                                  dark_image=Image.open('images/folder icon/folder dark.png'), 
+                                  size=(20, 20))
+        mail_folders_label = ctk.CTkLabel(self, text=' Mail folders', font=('Calibri', 16, 'bold'), 
+                                          image=folder_img, compound='left')
         mail_folders_label.place(relx=0.5, rely = 0.15, relwidth=0.7, relheight=0.05, anchor='n')
         
         #folder buttons
@@ -867,10 +901,14 @@ class MenuFrame(ctk.CTkFrame):
                                     hover_color=('#9AD0C2', '#31304D'), 
                                     command=lambda: self.set_mail_list('Spam', spam_button))
         
+        setting_img = ctk.CTkImage(light_image=Image.open('images/setting icon/light setting button.png'),
+                                   dark_image=Image.open('images/setting icon/dark setting button.png'),
+                                   size=(25, 25))
         setting_button = ctk.CTkButton(self, text='Setting', font=('Calibri', 16, 'bold'),
                                        text_color=('#265073', '#F0ECE5'),
                                        fg_color='transparent', 
-                                       hover_color=('#9AD0C2', '#31304D'), 
+                                       hover_color=('#9AD0C2', '#31304D'),
+                                       image=setting_img, 
                                        command=self.setting_window.toggle)
         
         inbox_button.place(relx=0.5, rely=0.2, relwidth=0.6, relheight=0.05, anchor='n')
