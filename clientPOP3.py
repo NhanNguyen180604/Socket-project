@@ -5,17 +5,19 @@ import json
 import sqlite3
 import io
 import re
+import threading
 
-def GetMessage():   
-    with open('config.json', 'r') as config_file:
-        config = json.load(config_file)
-    HOST = config['General']['MailServer']
-    PORT = config['General']['POP3']
-    FORMAT = config['General']['FORMAT']
-    usermail = config['Account']['usermail']
-    password = config['Account']['password']
-    db_name = usermail + '_db'
-        
+def GetMessage(lock: threading.Lock):   
+    with lock:
+        with open('config.json', 'r') as config_file:
+            config = json.load(config_file)
+        HOST = config['General']['MailServer']
+        PORT = config['General']['POP3']
+        FORMAT = config['General']['FORMAT']
+        usermail = config['Account']['usermail']
+        password = config['Account']['password']
+        db_name = usermail + '_db'
+    
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clientsocket:
         clientsocket.connect((HOST, PORT))
         response = clientsocket.recv(1024).decode(FORMAT)

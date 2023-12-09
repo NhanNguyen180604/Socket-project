@@ -4,14 +4,17 @@ import threading
 import time
 import json
 
+config_lock = threading.Lock()
+
 def main():
     def auto_load():
+        global config_lock
         with open('config.json', 'r') as fin:
             config = json.load(fin)
             interval = config['General']['Autoload']
         
         while True:
-            get_message_thread = threading.Thread(target=clientPOP3.GetMessage)
+            get_message_thread = threading.Thread(target=clientPOP3.GetMessage, args=(config_lock,))
             get_message_thread.start()
             get_message_thread.join()
             time.sleep(interval)

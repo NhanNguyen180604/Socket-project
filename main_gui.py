@@ -17,15 +17,14 @@ import create_db
 
 WINDOW_WIDTH, WINDOW_HEIGHT = 1200, 600
 
-global get_message_thread
 get_message_thread = True
 
-global config
 with open(os.path.join(os.getcwd(), 'config.json'), 'r') as config_file:
     config = json.load(config_file)
     
-global db_name
 db_name = config['Account']['usermail'] + '_db'
+
+config_lock = threading.Lock()
 
 ctk.set_appearance_mode(config['General']['GuiTheme'])
 
@@ -142,6 +141,9 @@ class MailContentFrame(ctk.CTkFrame):
             self.create_attachment_frame(att_frame, attachment).pack(expand=True, fill='x', padx=20, pady=5)
             
             type = mimetypes.guess_type(attachment[0])[0]
+            if type is None:
+                return
+            
             file_type = type.split('/')[0]
             if (file_type == 'image'):       
                 self.create_img_label_in_body(body_frame, attachment)
@@ -635,12 +637,16 @@ class SettingWindow(ctk.CTkFrame):
         password_entry.insert(0, config['Account']['password'])
         option_list.append(password_entry)
         
-        show_password_button = ctk.CTkButton(account_frame, text='Show password', font=('Calibri', 20, 'bold'),
+        show_password_img = ctk.CTkImage(light_image=Image.open('images/show password icon/light show password button.png'),
+                                         dark_image=Image.open('images/show password icon/dark show password button.png'),
+                                         size=(40, 40))
+        show_password_button = ctk.CTkButton(account_frame, text='',
+                                             image=show_password_img,
                                              fg_color=('#9AD0C2', '#161A30'),
                                              text_color=('black', '#F0ECE5'),
                                              hover_color=('#2D9596', '#31304D'),
                                              command=lambda: self.show_password(password_entry))
-        show_password_button.place(relx=0.75, rely=0.4, relheight=0.1)
+        show_password_button.place(relx=0.71, rely=0.4, relheight=0.1, relwidth=0.05)
         
         # filter
         filter_frame = ctk.CTkScrollableFrame(settings_frame, corner_radius=0,
@@ -776,6 +782,7 @@ class SettingWindow(ctk.CTkFrame):
             changed = True
             global db_name
             db_name = config['Account']['usermail'] + '_db'
+            create_db.create_db(db_name)
         # password
         password: str = option_list[7].get()
         if config['Account']['password'] != password:
@@ -825,8 +832,10 @@ class SettingWindow(ctk.CTkFrame):
             changed = True
             
         if changed:
-            with open(os.path.join(os.getcwd(), 'config.json'), 'w') as config_file:
-                json.dump(config, config_file, indent=4)
+            global config_lock
+            with config_lock:
+                with open(os.path.join(os.getcwd(), 'config.json'), 'w') as config_file:
+                    json.dump(config, config_file, indent=4)
         
     def show_settings(self, setting_button: ctk.CTkButton, setting_frame: ctk.CTkFrame):
         if self.selected_button == setting_button:
@@ -949,16 +958,18 @@ def get_mail_list(folder_name):
         
 def auto_load():   
     global get_message_thread
+    global config_lock
     while get_message_thread:
         for i in range(config['General']['Autoload']):
             time.sleep(1)
             if get_message_thread == False:
                 return
-        clientPOP3.GetMessage()
+        clientPOP3.GetMessage(config_lock)
             
 def main():
+    global config_lock
     create_db.create_db(db_name)
-    clientPOP3.GetMessage()
+    clientPOP3.GetMessage(config_lock)
     auto_load_thread = threading.Thread(target=auto_load)
     auto_load_thread.start()
     App(WINDOW_WIDTH, WINDOW_HEIGHT)
