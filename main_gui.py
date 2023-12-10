@@ -81,7 +81,7 @@ class MailContentFrame(ctk.CTkFrame):
         # from 
         from_frame = ctk.CTkFrame(top_frame, fg_color='transparent')
         from_frame.pack(expand=True, fill='both', padx=20)
-        sender_label = ctk.CTkLabel(from_frame, text=f'From: {mail_dict['From']} <{mail_dict['MailFrom']}>', 
+        sender_label = ctk.CTkLabel(from_frame, text=f"From: {mail_dict['From']} <{mail_dict['MailFrom']}>", 
                                     font=('Calibri', 16), fg_color='transparent', anchor='w', justify='left',
                                     text_color=('black', '#F0ECE5'))
         sender_label.pack(expand=True, fill='both')
@@ -89,7 +89,7 @@ class MailContentFrame(ctk.CTkFrame):
         # to
         to_frame = ctk.CTkFrame(top_frame, fg_color='transparent')
         to_frame.pack(expand=True, fill='both', padx=20)
-        to_label = ctk.CTkLabel(to_frame, text=f'To: {mail_dict.get('To', '')}', anchor='w',
+        to_label = ctk.CTkLabel(to_frame, text=f"To: {mail_dict.get('To', '')}", anchor='w',
                                 font=('Calibri', 16), fg_color='transparent', justify='left',
                                 text_color=('black', '#F0ECE5'))
         to_label.pack(expand=True, fill='both')
@@ -97,7 +97,7 @@ class MailContentFrame(ctk.CTkFrame):
         # cc
         cc_frame = ctk.CTkFrame(top_frame, fg_color='transparent')
         cc_frame.pack(expand=True, fill='both', padx=20)
-        cc_label = ctk.CTkLabel(cc_frame, text=f'Cc: {mail_dict.get('Cc', '')}', anchor='w',
+        cc_label = ctk.CTkLabel(cc_frame, text=f"Cc: {mail_dict.get('Cc', '')}", anchor='w',
                                 font=('Calibri', 16), fg_color='transparent', justify='left',
                                 text_color=('black', '#F0ECE5'))
         cc_label.pack(expand=True, fill='both')
@@ -194,7 +194,7 @@ class MailContentFrame(ctk.CTkFrame):
         file_data = attachment[1].encode('utf-8')
         type = mimetypes.guess_type(file_name)[0]
         file_type = type.split('/')[0]
-        extension = f'.{type.split('/')[1]}'
+        extension = f'.{type.split("/")[1]}'
         
         path = filedialog.asksaveasfilename(initialfile=file_name, defaultextension=extension,
                                             filetypes=[(file_type, extension)])
