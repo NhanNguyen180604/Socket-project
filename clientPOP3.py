@@ -22,28 +22,35 @@ def GetMessage(lock: threading.Lock):
         clientsocket.connect((HOST, PORT))
         response = clientsocket.recv(1024).decode(FORMAT)
         if(response[:3] != '+OK'):
-                print("Error connecting to the server")
-                return
-        msg = "CAPA\r\n"
-        clientsocket.sendall(msg.encode(FORMAT))
-        clientsocket.recv(1024)
+            print("Error connecting to the server")
+            msg = "QUIT\r\n"
+            clientsocket.sendall(msg.encode(FORMAT))
+            return
+        
         msg = f"USER {usermail}\r\n"
         clientsocket.sendall(msg.encode(FORMAT))
-        clientsocket.recv(1024)
+        response = clientsocket.recv(1024).decode(FORMAT)
+        if(response[:3] != '+OK'):
+            msg = "QUIT\r\n"
+            clientsocket.sendall(msg.encode(FORMAT))
+            return
+        
         msg = f"PASS {password}\r\n"
         clientsocket.sendall(msg.encode(FORMAT))
-        clientsocket.recv(1024)
-        msg = "STAT\r\n"
-        clientsocket.sendall(msg.encode(FORMAT))
         response = clientsocket.recv(1024).decode(FORMAT)
-
-        msg = "LIST\r\n"
-        clientsocket.sendall(msg.encode(FORMAT))
-        clientsocket.recv(1024)
+        if(response[:3] != '+OK'):
+            msg = "QUIT\r\n"
+            clientsocket.sendall(msg.encode(FORMAT))
+            return
+        
         msg = "UIDL\r\n"
         clientsocket.sendall(msg.encode(FORMAT))
-        
         response = clientsocket.recv(1024).decode(FORMAT)
+        if(response[:3] != '+OK'):
+            msg = "QUIT\r\n"
+            clientsocket.sendall(msg.encode(FORMAT))
+            return
+        
         response = response.split('\r\n')[1:-2]
         
         uidlList = [line[:-4] for line in response] # format of each line is '{number} {UIDL}'
@@ -68,6 +75,11 @@ def GetMessage(lock: threading.Lock):
                     if '\r\n.\r\n' in chunk[-1000:]:
                         break
                     
+                if(response.getvalue().split('\r\n', 1)[0][:3] != '+OK'):
+                    msg = 'QUIT\r\n'
+                    clientsocket.sendall(msg.encode(FORMAT))
+                    return    
+                
                 response = response.getvalue().split('\r\n', 1)[1]
                 filecontent, From, Subject, Content = string_parser(response[:-5])
                 folder = filter(From, Subject, Content)
@@ -87,80 +99,6 @@ def GetMessage(lock: threading.Lock):
              
         msg = "QUIT\r\n"
         clientsocket.sendall(msg.encode(FORMAT))
-
-def CheckMail():
-    while True:
-        print("Here is the list of folders in your mailbox:")
-        print("1. Inbox")
-        print("2. College")
-        print("3. Important")
-        print("4. Spam")
-        choice = input("Choose the folder (press anything else to quit): ")
-        
-        if (choice < "1" or choice > "4"):
-            print('Quit')
-            return
-
-        folder_name = get_folder_name(int(choice))          
-         
-        print(f"Folder: {folder_name}")
-        folderpath = os.path.join(os.getcwd(), folder_name)
-        if not os.path.exists(folderpath):
-            print("This folder doesn't exist")
-            return
-        
-        with sqlite3.connect('email_db') as db: 
-            cursor = db.cursor()
-            while True:
-                command = 'SELECT * FROM email WHERE Folder = "' + folder_name + '"'
-                cursor.execute(command)
-                files = cursor.fetchall()
-                
-                if (len(files) == 0):
-                    print('This folder is empty')
-                    break
-            
-                msg = '{:<5} || {:<10} || {:<30} || {:<100}'
-                print(msg.format('No', '', 'From', 'Subject'))
-                for i, file in enumerate(files, start=1):
-                    if (file[5] == False):
-                        print(msg.format(i, '(Unread)', f'<{file[2]}>', file[3]))
-                    else:
-                        print(msg.format(i, '', f'<{file[2]}>', file[3]))
-                                
-                mail_choice = input(f'Choose email to read (1 - {i}), type "q" to quit: ')
-                if mail_choice == 'q' or mail_choice == 'Q':
-                    break
-                
-                mail_choice = int(mail_choice)
-                if mail_choice < 1 or mail_choice > i:
-                    print('Invalid choice')
-                else:
-                    command = 'UPDATE email SET IsRead = TRUE WHERE UIDL = "' + files[mail_choice - 1][1] + '"'
-                    cursor.execute(command)
-                    
-                    mail_dict, header, body = ReadFile(folderpath, files[mail_choice - 1][1])
-                    print(header + '\n\n' + body)  
-                    if 'File' in mail_dict:
-                        ans = input('Do you want to download attached file?: ')
-                        if ans == 'Y' or ans == 'y':
-                            for att in mail_dict['File']:    
-                                filepath = os.path.join(os.getcwd(), 'Attachment', att[0])
-                                os.makedirs(os.path.dirname(filepath), exist_ok=True)
-                                with open(filepath, 'wb') as fi:
-                                    fi.write(base64.b64decode(att[1]))
-            
-            cursor.close()
-            db.commit()  # save changes
-                                        
-def get_folder_name(folder_number):
-    folders = {
-        1: "Inbox",
-        2: "College",
-        3: "Important",
-        4: "Spam",
-    }
-    return folders.get(folder_number, "Unknown")
 
 def string_parser(response:str):
     email = io.StringIO()
